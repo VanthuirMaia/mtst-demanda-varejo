@@ -32,7 +32,7 @@ cada série, mas tem poucas amostras.
 
 | Item | Definição |
 |---|---|
-| Lookback | 336 dias (48 semanas) |
+| Lookback | 364 dias (52 semanas) |
 | Horizonte | 90 dias |
 | Treino | até 2016-06-30 |
 | Validação | 2016-07-01 a 2016-12-31 |
@@ -45,8 +45,7 @@ Notas:
   do dataset não entram no teste.
 - Janelas de treino/validação: o horizonte previsto fica dentro do intervalo do split; o
   lookback pode usar histórico anterior. Amostras channel-independent (uma por série e origem).
-- O baseline anual enxerga 364 dias de histórico, mais que o lookback de 336 do modelo.
-  Ao comparar, lembrar que o modelo não vê o mesmo dia do ano anterior diretamente.
+- **Lookback = 364.** Os dados são diários, e 364 dias = 52 semanas: o modelo enxerga o mesmo dia da semana do ano anterior, o que torna justa a comparação com o baseline sazonal anual (mesma informação disponível). Além disso, 364 é divisível por 7, 14 e 28, então os patches da Fase 2 se alinham a semanas. O 336 do paper vem de datasets horários e não se aplica aqui.
 - Seed fixa: 42.
 
 ## Como rodar

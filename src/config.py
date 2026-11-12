@@ -15,7 +15,10 @@ TAB_DIR = RAIZ / "results" / "tables"
 SEED = 42
 
 # --- Janelas ---
-LOOKBACK = 336  # 48 semanas (múltiplo de 7)
+# 364 dias = 52 semanas: o modelo vê o mesmo dia da semana do ano anterior (justo vs. naive
+# anual) e 364 é divisível por 7, 14 e 28 (patches alinhados a semanas). O 336 do paper é de
+# datasets horários e não se aplica a dados diários.
+LOOKBACK = 364
 HORIZON = 90
 
 # --- Splits (datas inclusivas) ---
