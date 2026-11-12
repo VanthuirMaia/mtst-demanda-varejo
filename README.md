@@ -172,6 +172,11 @@ results/         figures/ e tables/
 - Métricas: MSE e MAE na escala normalizada, janelas completas de teste (`drop_last`).
 - Números do artigo em `results/tables/etth1_artigo.csv`.
 
+Comportamentos do oficial **reproduzidos de propósito** (não são escolha nossa):
+- **OneCycleLR nunca avançado:** o `etth1.sh` não passa `--lradj`, então vale `type3` e o `OneCycleLR` é só construído.
+  A construção deixa lr=4e-6 e `beta1=0,95` no Adam até o fim da época 1; depois o `type3` põe lr=1e-4 (e `beta1` segue 0,95).
+- **`drop_last=True` no teste:** a última janela incompleta é descartada (2560 de 2785 janelas no h=96, batch 256).
+
 Diferenças sem efeito: `StandardScaler` em numpy (sem sklearn); marcas de tempo não geradas (o MTST não as usa);
 o teste não é avaliado a cada época (no oficial a loss de teste é só impressa).
 
@@ -180,8 +185,17 @@ uv run python -m src.replicacao --horizonte 96                       # treino co
 uv run python -m src.replicacao --horizonte 96 --epocas 1 --amostra 0.1   # smoke test
 ```
 
-Saídas: `results/tables/etth1_h{H}.csv` (resultado) e `etth1_h{H}_log.csv` (curvas).
-Em CPU, ~13 min por época (ver estimativa no status).
+Saídas: `results/tables/etth1_resultados.csv` (uma linha por horizonte: MSE, MAE, melhor época, épocas, tempo,
+device e diferença abs./relativa vs. artigo) e `etth1_h{H}_log.csv` (curvas por época). Usa GPU se houver, senão CPU
+(~13 min/época em CPU de 8 threads; execuções com `--epocas`/`--amostra` são smoke e não entram na tabela de resultados).
+
+### Rodar no Google Colab (GPU)
+1. No GitHub, crie um *fine-grained token* com acesso de leitura (*Contents: read*) a este repositório.
+2. No Colab, abra `notebooks/replicacao_colab.ipynb` (File > Upload ou via GitHub).
+3. Painel de Secrets (ícone de chave): crie `GITHUB_TOKEN` com o token e ative *Notebook access*.
+4. *Runtime > Change runtime type > GPU* (T4 serve).
+5. *Run all*: clona o repo, instala `einops`/`yacs`, baixa o ETTh1, confere a GPU, roda os 4 horizontes e baixa
+   `etth1_resultados.zip` com tabelas e logs. O notebook usa o que estiver no GitHub: faça o push antes.
 
 ## Referências
 
