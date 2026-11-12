@@ -1,0 +1,189 @@
+Dados: shape=(1826, 500) (dias x séries), período 2013-01-01 a 2017-12-31
+[local_loja1] amostras treino=5900 val=700 séries=50
+[local_loja1] parâmetros: 2,923,212
+[local_loja1] época 01 | treino 1.202 | val 1.048 | lr 7.67e-05 | 22s *
+[local_loja1] época 02 | treino 0.687 | val 1.237 | lr 2.20e-04 | 22s
+[local_loja1] época 03 | treino 0.572 | val 1.312 | lr 3.82e-04 | 23s
+[local_loja1] época 04 | treino 0.547 | val 1.325 | lr 4.87e-04 | 24s
+[local_loja1] época 05 | treino 0.514 | val 1.236 | lr 4.97e-04 | 23s
+[local_loja1] época 06 | treino 0.487 | val 1.256 | lr 4.75e-04 | 22s
+[local_loja1] época 07 | treino 0.465 | val 1.101 | lr 4.32e-04 | 22s
+[local_loja1] época 08 | treino 0.444 | val 1.042 | lr 3.74e-04 | 22s *
+[local_loja1] época 09 | treino 0.427 | val 1.144 | lr 3.04e-04 | 22s
+[local_loja1] época 10 | treino 0.417 | val 1.033 | lr 2.30e-04 | 22s *
+[local_loja1] época 11 | treino 0.406 | val 1.063 | lr 1.57e-04 | 23s
+[local_loja1] época 12 | treino 0.398 | val 1.045 | lr 9.29e-05 | 22s
+[local_loja1] época 13 | treino 0.392 | val 1.057 | lr 4.25e-05 | 22s
+[local_loja1] época 14 | treino 0.388 | val 1.043 | lr 1.06e-05 | 23s
+[local_loja1] época 15 | treino 0.386 | val 1.034 | lr 7.07e-09 | 22s
+[local_loja1] melhor época: 10 (val 1.033)
+[local_loja2] amostras treino=5900 val=700 séries=50
+[local_loja2] parâmetros: 2,923,212
+[local_loja2] época 01 | treino 1.138 | val 1.014 | lr 7.67e-05 | 22s *
+[local_loja2] época 02 | treino 0.623 | val 1.117 | lr 2.20e-04 | 21s
+[local_loja2] época 03 | treino 0.501 | val 1.446 | lr 3.82e-04 | 22s
+[local_loja2] época 04 | treino 0.474 | val 1.410 | lr 4.87e-04 | 22s
+[local_loja2] época 05 | treino 0.437 | val 1.459 | lr 4.97e-04 | 23s
+[local_loja2] época 06 | treino 0.412 | val 1.246 | lr 4.75e-04 | 22s
+[local_loja2] época 07 | treino 0.390 | val 1.121 | lr 4.32e-04 | 22s
+[local_loja2] época 08 | treino 0.371 | val 1.025 | lr 3.74e-04 | 22s
+[local_loja2] época 09 | treino 0.353 | val 1.055 | lr 3.04e-04 | 22s
+[local_loja2] época 10 | treino 0.343 | val 0.987 | lr 2.30e-04 | 22s *
+[local_loja2] época 11 | treino 0.335 | val 0.989 | lr 1.57e-04 | 22s
+[local_loja2] época 12 | treino 0.327 | val 0.969 | lr 9.29e-05 | 22s *
+[local_loja2] época 13 | treino 0.322 | val 0.963 | lr 4.25e-05 | 22s *
+[local_loja2] época 14 | treino 0.320 | val 0.967 | lr 1.06e-05 | 22s
+[local_loja2] época 15 | treino 0.318 | val 0.971 | lr 7.07e-09 | 21s
+[local_loja2] melhor época: 13 (val 0.963)
+[local_loja3] amostras treino=5900 val=700 séries=50
+[local_loja3] parâmetros: 2,923,212
+[local_loja3] época 01 | treino 1.165 | val 1.050 | lr 7.67e-05 | 22s *
+[local_loja3] época 02 | treino 0.645 | val 1.214 | lr 2.20e-04 | 24s
+[local_loja3] época 03 | treino 0.528 | val 1.379 | lr 3.82e-04 | 23s
+[local_loja3] época 04 | treino 0.497 | val 1.285 | lr 4.87e-04 | 22s
+[local_loja3] época 05 | treino 0.466 | val 1.312 | lr 4.97e-04 | 23s
+[local_loja3] época 06 | treino 0.438 | val 1.300 | lr 4.75e-04 | 22s
+[local_loja3] época 07 | treino 0.416 | val 1.049 | lr 4.32e-04 | 22s *
+[local_loja3] época 08 | treino 0.393 | val 1.059 | lr 3.74e-04 | 23s
+[local_loja3] época 09 | treino 0.381 | val 1.016 | lr 3.04e-04 | 23s *
+[local_loja3] época 10 | treino 0.369 | val 1.008 | lr 2.30e-04 | 23s *
+[local_loja3] época 11 | treino 0.360 | val 0.962 | lr 1.57e-04 | 22s *
+[local_loja3] época 12 | treino 0.351 | val 0.966 | lr 9.29e-05 | 22s
+[local_loja3] época 13 | treino 0.346 | val 0.962 | lr 4.25e-05 | 23s *
+[local_loja3] época 14 | treino 0.343 | val 0.945 | lr 1.06e-05 | 27s *
+[local_loja3] época 15 | treino 0.342 | val 0.939 | lr 7.07e-09 | 24s *
+[local_loja3] melhor época: 15 (val 0.939)
+[local_loja4] amostras treino=5900 val=700 séries=50
+[local_loja4] parâmetros: 2,923,212
+[local_loja4] época 01 | treino 1.176 | val 1.089 | lr 7.67e-05 | 22s *
+[local_loja4] época 02 | treino 0.661 | val 1.318 | lr 2.20e-04 | 22s
+[local_loja4] época 03 | treino 0.542 | val 1.445 | lr 3.82e-04 | 24s
+[local_loja4] época 04 | treino 0.514 | val 1.356 | lr 4.87e-04 | 51s
+[local_loja4] época 05 | treino 0.483 | val 1.436 | lr 4.97e-04 | 46s
+[local_loja4] época 06 | treino 0.454 | val 1.273 | lr 4.75e-04 | 43s
+[local_loja4] época 07 | treino 0.432 | val 1.262 | lr 4.32e-04 | 41s
+[local_loja4] época 08 | treino 0.410 | val 1.259 | lr 3.74e-04 | 39s
+[local_loja4] época 09 | treino 0.396 | val 1.307 | lr 3.04e-04 | 41s
+[local_loja4] época 10 | treino 0.387 | val 1.208 | lr 2.30e-04 | 41s
+[local_loja4] época 11 | treino 0.375 | val 1.182 | lr 1.57e-04 | 41s
+[local_loja4] época 12 | treino 0.367 | val 1.164 | lr 9.29e-05 | 49s
+[local_loja4] época 13 | treino 0.363 | val 1.158 | lr 4.25e-05 | 44s
+[local_loja4] época 14 | treino 0.359 | val 1.156 | lr 1.06e-05 | 44s
+[local_loja4] época 15 | treino 0.358 | val 1.149 | lr 7.07e-09 | 39s
+[local_loja4] melhor época: 1 (val 1.089)
+[local_loja5] amostras treino=5900 val=700 séries=50
+[local_loja5] parâmetros: 2,923,212
+[local_loja5] época 01 | treino 1.239 | val 1.044 | lr 7.67e-05 | 43s *
+[local_loja5] época 02 | treino 0.730 | val 1.283 | lr 2.20e-04 | 40s
+[local_loja5] época 03 | treino 0.617 | val 1.243 | lr 3.82e-04 | 40s
+[local_loja5] época 04 | treino 0.594 | val 1.220 | lr 4.87e-04 | 41s
+[local_loja5] época 05 | treino 0.561 | val 1.324 | lr 4.97e-04 | 42s
+[local_loja5] época 06 | treino 0.531 | val 1.259 | lr 4.75e-04 | 40s
+[local_loja5] época 07 | treino 0.506 | val 1.078 | lr 4.32e-04 | 40s
+[local_loja5] época 08 | treino 0.487 | val 1.010 | lr 3.74e-04 | 40s *
+[local_loja5] época 09 | treino 0.471 | val 1.134 | lr 3.04e-04 | 40s
+[local_loja5] época 10 | treino 0.459 | val 1.012 | lr 2.30e-04 | 40s
+[local_loja5] época 11 | treino 0.450 | val 0.970 | lr 1.57e-04 | 40s *
+[local_loja5] época 12 | treino 0.440 | val 0.953 | lr 9.29e-05 | 40s *
+[local_loja5] época 13 | treino 0.434 | val 0.945 | lr 4.25e-05 | 41s *
+[local_loja5] época 14 | treino 0.430 | val 0.939 | lr 1.06e-05 | 41s *
+[local_loja5] época 15 | treino 0.430 | val 0.934 | lr 7.07e-09 | 40s *
+[local_loja5] melhor época: 15 (val 0.934)
+[local_loja6] amostras treino=5900 val=700 séries=50
+[local_loja6] parâmetros: 2,923,212
+[local_loja6] época 01 | treino 1.241 | val 1.033 | lr 7.67e-05 | 60s *
+[local_loja6] época 02 | treino 0.729 | val 1.088 | lr 2.20e-04 | 48s
+[local_loja6] época 03 | treino 0.618 | val 1.178 | lr 3.82e-04 | 44s
+[local_loja6] época 04 | treino 0.588 | val 1.144 | lr 4.87e-04 | 50s
+[local_loja6] época 05 | treino 0.557 | val 1.071 | lr 4.97e-04 | 48s
+[local_loja6] época 06 | treino 0.532 | val 1.111 | lr 4.75e-04 | 46s
+[local_loja6] época 07 | treino 0.505 | val 1.015 | lr 4.32e-04 | 35s *
+[local_loja6] época 08 | treino 0.484 | val 0.976 | lr 3.74e-04 | 30s *
+[local_loja6] época 09 | treino 0.471 | val 0.965 | lr 3.04e-04 | 20s *
+[local_loja6] época 10 | treino 0.457 | val 0.953 | lr 2.30e-04 | 22s *
+[local_loja6] época 11 | treino 0.449 | val 0.930 | lr 1.57e-04 | 22s *
+[local_loja6] época 12 | treino 0.439 | val 0.936 | lr 9.29e-05 | 24s
+[local_loja6] época 13 | treino 0.434 | val 0.891 | lr 4.25e-05 | 24s *
+[local_loja6] época 14 | treino 0.429 | val 0.898 | lr 1.06e-05 | 22s
+[local_loja6] época 15 | treino 0.428 | val 0.894 | lr 7.07e-09 | 21s
+[local_loja6] melhor época: 13 (val 0.891)
+[local_loja7] amostras treino=5900 val=700 séries=50
+[local_loja7] parâmetros: 2,923,212
+[local_loja7] época 01 | treino 1.257 | val 1.079 | lr 7.67e-05 | 21s *
+[local_loja7] época 02 | treino 0.747 | val 1.197 | lr 2.20e-04 | 28s
+[local_loja7] época 03 | treino 0.636 | val 1.417 | lr 3.82e-04 | 30s
+[local_loja7] época 04 | treino 0.614 | val 1.350 | lr 4.87e-04 | 23s
+[local_loja7] época 05 | treino 0.579 | val 1.357 | lr 4.97e-04 | 21s
+[local_loja7] época 06 | treino 0.551 | val 1.323 | lr 4.75e-04 | 21s
+[local_loja7] época 07 | treino 0.524 | val 1.134 | lr 4.32e-04 | 22s
+[local_loja7] época 08 | treino 0.503 | val 1.145 | lr 3.74e-04 | 21s
+[local_loja7] época 09 | treino 0.488 | val 1.176 | lr 3.04e-04 | 21s
+[local_loja7] época 10 | treino 0.476 | val 1.085 | lr 2.30e-04 | 21s
+[local_loja7] época 11 | treino 0.464 | val 1.093 | lr 1.57e-04 | 20s
+[local_loja7] época 12 | treino 0.457 | val 1.098 | lr 9.29e-05 | 21s
+[local_loja7] época 13 | treino 0.451 | val 1.077 | lr 4.25e-05 | 20s *
+[local_loja7] época 14 | treino 0.447 | val 1.082 | lr 1.06e-05 | 21s
+[local_loja7] época 15 | treino 0.446 | val 1.067 | lr 7.07e-09 | 22s *
+[local_loja7] melhor época: 15 (val 1.067)
+[local_loja8] amostras treino=5900 val=700 séries=50
+[local_loja8] parâmetros: 2,923,212
+[local_loja8] época 01 | treino 1.149 | val 1.059 | lr 7.67e-05 | 21s *
+[local_loja8] época 02 | treino 0.631 | val 1.249 | lr 2.20e-04 | 21s
+[local_loja8] época 03 | treino 0.511 | val 1.361 | lr 3.82e-04 | 21s
+[local_loja8] época 04 | treino 0.485 | val 1.290 | lr 4.87e-04 | 22s
+[local_loja8] época 05 | treino 0.453 | val 1.275 | lr 4.97e-04 | 22s
+[local_loja8] época 06 | treino 0.425 | val 1.204 | lr 4.75e-04 | 22s
+[local_loja8] época 07 | treino 0.398 | val 1.113 | lr 4.32e-04 | 21s
+[local_loja8] época 08 | treino 0.379 | val 1.029 | lr 3.74e-04 | 20s *
+[local_loja8] época 09 | treino 0.366 | val 1.069 | lr 3.04e-04 | 22s
+[local_loja8] época 10 | treino 0.356 | val 0.996 | lr 2.30e-04 | 21s *
+[local_loja8] época 11 | treino 0.345 | val 0.993 | lr 1.57e-04 | 22s *
+[local_loja8] época 12 | treino 0.337 | val 0.966 | lr 9.29e-05 | 21s *
+[local_loja8] época 13 | treino 0.332 | val 0.972 | lr 4.25e-05 | 22s
+[local_loja8] época 14 | treino 0.330 | val 0.962 | lr 1.06e-05 | 21s *
+[local_loja8] época 15 | treino 0.328 | val 0.963 | lr 7.07e-09 | 21s
+[local_loja8] melhor época: 14 (val 0.962)
+[local_loja9] amostras treino=5900 val=700 séries=50
+[local_loja9] parâmetros: 2,923,212
+[local_loja9] época 01 | treino 1.172 | val 1.021 | lr 7.67e-05 | 22s *
+[local_loja9] época 02 | treino 0.657 | val 1.120 | lr 2.20e-04 | 21s
+[local_loja9] época 03 | treino 0.541 | val 1.314 | lr 3.82e-04 | 21s
+[local_loja9] época 04 | treino 0.513 | val 1.289 | lr 4.87e-04 | 23s
+[local_loja9] época 05 | treino 0.480 | val 1.266 | lr 4.97e-04 | 20s
+[local_loja9] época 06 | treino 0.453 | val 1.197 | lr 4.75e-04 | 20s
+[local_loja9] época 07 | treino 0.430 | val 1.045 | lr 4.32e-04 | 21s
+[local_loja9] época 08 | treino 0.406 | val 0.984 | lr 3.74e-04 | 20s *
+[local_loja9] época 09 | treino 0.394 | val 1.056 | lr 3.04e-04 | 21s
+[local_loja9] época 10 | treino 0.381 | val 0.985 | lr 2.30e-04 | 21s
+[local_loja9] época 11 | treino 0.372 | val 0.979 | lr 1.57e-04 | 21s *
+[local_loja9] época 12 | treino 0.365 | val 1.007 | lr 9.29e-05 | 20s
+[local_loja9] época 13 | treino 0.358 | val 0.965 | lr 4.25e-05 | 20s *
+[local_loja9] época 14 | treino 0.356 | val 0.986 | lr 1.06e-05 | 20s
+[local_loja9] época 15 | treino 0.354 | val 0.976 | lr 7.07e-09 | 21s
+[local_loja9] melhor época: 13 (val 0.965)
+[local_loja10] amostras treino=5900 val=700 séries=50
+[local_loja10] parâmetros: 2,923,212
+[local_loja10] época 01 | treino 1.157 | val 1.071 | lr 7.67e-05 | 21s *
+[local_loja10] época 02 | treino 0.645 | val 1.165 | lr 2.20e-04 | 21s
+[local_loja10] época 03 | treino 0.526 | val 1.279 | lr 3.82e-04 | 21s
+[local_loja10] época 04 | treino 0.497 | val 1.416 | lr 4.87e-04 | 21s
+[local_loja10] época 05 | treino 0.466 | val 1.532 | lr 4.97e-04 | 20s
+[local_loja10] época 06 | treino 0.437 | val 1.224 | lr 4.75e-04 | 20s
+[local_loja10] época 07 | treino 0.411 | val 1.122 | lr 4.32e-04 | 20s
+[local_loja10] época 08 | treino 0.393 | val 1.145 | lr 3.74e-04 | 21s
+[local_loja10] época 09 | treino 0.378 | val 1.170 | lr 3.04e-04 | 20s
+[local_loja10] época 10 | treino 0.366 | val 1.126 | lr 2.30e-04 | 22s
+[local_loja10] época 11 | treino 0.357 | val 1.114 | lr 1.57e-04 | 21s
+[local_loja10] época 12 | treino 0.350 | val 1.134 | lr 9.29e-05 | 21s
+[local_loja10] época 13 | treino 0.344 | val 1.139 | lr 4.25e-05 | 20s
+[local_loja10] época 14 | treino 0.341 | val 1.147 | lr 1.06e-05 | 21s
+[local_loja10] época 15 | treino 0.339 | val 1.131 | lr 7.07e-09 | 25s
+[local_loja10] melhor época: 1 (val 1.071)
+          modelo janela     origem    mae   rmse  smape  mase
+mtst_local_todas      1 2017-01-01  8.428 10.615 19.949 1.026
+mtst_local_todas      2 2017-04-01 11.521 14.122 18.482 1.392
+mtst_local_todas      3 2017-06-30 12.038 14.373 18.575 1.450
+mtst_local_todas      4 2017-09-28 10.522 12.978 20.192 1.273
+mtst_local_todas  media        NaN 10.627 13.022 19.300 1.285
+salvo em D:\UPE\02 - ST - Series Temporais\ProjetoST\ProjetoFinal\results\tables\mtst_local_todas.csv
+tempo total: 66.9 min

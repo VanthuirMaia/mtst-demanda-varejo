@@ -1,0 +1,27 @@
+Dados: shape=(1826, 500) (dias x séries), período 2013-01-01 a 2017-12-31
+[global] amostras treino=59000 val=7000 séries=500
+[global] parâmetros: 2,923,212
+[global] época 01 | treino 0.689 | val 1.102 | lr 7.62e-05 | 232s *
+[global] época 02 | treino 0.471 | val 0.981 | lr 2.18e-04 | 224s *
+[global] época 03 | treino 0.402 | val 0.967 | lr 3.80e-04 | 240s *
+[global] época 04 | treino 0.363 | val 0.893 | lr 4.86e-04 | 231s *
+[global] época 05 | treino 0.344 | val 0.868 | lr 4.97e-04 | 234s *
+[global] época 06 | treino 0.336 | val 0.828 | lr 4.75e-04 | 227s *
+[global] época 07 | treino 0.332 | val 0.837 | lr 4.33e-04 | 226s
+[global] época 08 | treino 0.329 | val 0.826 | lr 3.75e-04 | 228s *
+[global] época 09 | treino 0.327 | val 0.875 | lr 3.05e-04 | 243s
+[global] época 10 | treino 0.325 | val 0.856 | lr 2.31e-04 | 233s
+[global] época 11 | treino 0.322 | val 0.875 | lr 1.59e-04 | 227s
+[global] época 12 | treino 0.321 | val 0.868 | lr 9.40e-05 | 229s
+[global] época 13 | treino 0.319 | val 0.861 | lr 4.34e-05 | 226s
+[global] época 14 | treino 0.317 | val 0.856 | lr 1.11e-05 | 225s
+[global] época 15 | treino 0.316 | val 0.855 | lr 2.05e-09 | 227s
+[global] melhor época: 8 (val 0.826)
+     modelo janela     origem    mae   rmse  smape  mase
+mtst_global      1 2017-01-01  8.881 10.612 20.467 1.074
+mtst_global      2 2017-04-01 11.868 14.870 19.081 1.429
+mtst_global      3 2017-06-30 11.848 14.211 18.287 1.424
+mtst_global      4 2017-09-28  9.784 12.079 18.689 1.186
+mtst_global  media        NaN 10.595 12.943 19.131 1.279
+salvo em D:\UPE\02 - ST - Series Temporais\ProjetoST\ProjetoFinal\results\tables\mtst_global.csv
+tempo total: 57.6 min
