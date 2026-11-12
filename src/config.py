@@ -8,6 +8,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 RAW_DIR = RAIZ / "data" / "raw"
 PROCESSED_DIR = RAIZ / "data" / "processed"
 TRAIN_CSV = RAW_DIR / "train.csv"
+CKPT_DIR = RAIZ / "results" / "checkpoints"
 FIG_DIR = RAIZ / "results" / "figures"
 TAB_DIR = RAIZ / "results" / "tables"
 
@@ -36,6 +37,24 @@ SEASONALITY = 7  # sazonalidade usada na escala do MASE
 
 # --- Baselines ---
 YEAR_LAG = 364  # 52 semanas: mesmo dia da semana um ano antes
+
+
+# --- MTST (argumentos esperados pelo construtor oficial, via SimpleNamespace) ---
+# 3 ramos com patch = stride = 7, 14, 28 dias -> 52, 26, 13 tokens (lookback 364).
+# O código oficial usa padding_patch='end' (acrescenta 1 patch); aqui None para ter
+# exatamente 364/patch tokens.
+MTST = dict(
+    seq_len=LOOKBACK, pred_len=HORIZON, enc_in=1,
+    e_layers=2, n_branches=3, n_heads=4, d_model=64, d_ff=128,
+    dropout=0.2, fc_dropout=0.2, head_dropout=0.0,
+    patch_len_ls="7, 14, 28", stride_ls="7, 14, 28", padding_patch=None,
+    revin=1, affine=0, subtract_last=0, rel_pe="rel_sin",
+    individual=0, decomposition=0, kernel_size=25,
+    store_attn=False, pre_norm=False, res_attn=False,
+)
+
+# --- Treino ---
+TREINO = dict(lr=1e-3, batch=128, epocas=30, paciencia=4, stride_treino=7, stride_val=7)
 
 
 def to_ts(s):

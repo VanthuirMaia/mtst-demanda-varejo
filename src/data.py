@@ -57,3 +57,21 @@ def make_windows(matrix, start, end, lookback=C.LOOKBACK, horizon=C.HORIZON, str
     X = vals[idx_x].transpose(0, 2, 1).reshape(n * S, lookback)
     y = vals[idx_y].transpose(0, 2, 1).reshape(n * S, horizon)
     return X, y
+
+
+def selecionar_series(matrix, loja=None, frac=1.0, seed=C.SEED):
+    """Filtra colunas: loja=None -> todas (global); loja=N -> só a loja N (local).
+    frac < 1 sorteia uma fração das séries (teste rápido), com seed fixa."""
+    if loja is not None:
+        matrix = matrix[[c for c in matrix.columns if c.startswith(f"s{loja}_")]]
+    if frac < 1:
+        n = max(1, int(round(len(matrix.columns) * frac)))
+        cols = np.random.default_rng(seed).choice(matrix.columns, n, replace=False)
+        matrix = matrix[[c for c in matrix.columns if c in set(cols)]]  # mantém a ordem
+    return matrix
+
+
+def make_test_window(matrix, origem):
+    """Janela de teste única: X (n_series, lookback), y (n_series, horizon)."""
+    fim = origem + pd.Timedelta(days=C.HORIZON - 1)
+    return make_windows(matrix, origem, fim, stride=1)
