@@ -23,15 +23,18 @@ from src.data import get_test_origins, load_data, make_test_window, make_windows
 from src.metrics import evaluate
 from src.mtst_oficial.MTST import Model
 
+DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def fixar_seed(seed=C.SEED):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 def criar_modelo():
-    return Model(SimpleNamespace(**C.MTST))
+    return Model(SimpleNamespace(**C.MTST)).to(DEV)
 
 
 def contar_parametros(model):
@@ -40,7 +43,7 @@ def contar_parametros(model):
 
 def prever(model, x):
     """x: (B, lookback) -> (B, horizon). O modelo oficial usa [B, L, canais] com 1 canal."""
-    saida = model(x.unsqueeze(-1))[0]  # (B, horizon, 1)
+    saida = model(x.to(DEV).unsqueeze(-1))[0]  # (B, horizon, 1)
     return saida.squeeze(-1)
 
 
@@ -48,7 +51,7 @@ def prever_em_lotes(model, X, batch=512):
     model.eval()
     X = torch.from_numpy(X)
     with torch.no_grad():
-        return torch.cat([prever(model, X[i:i + batch]) for i in range(0, len(X), batch)]).numpy()
+        return torch.cat([prever(model, X[i:i + batch]) for i in range(0, len(X), batch)]).cpu().numpy()
 
 
 def loss_val(model, X, y, batch=512):
@@ -57,7 +60,7 @@ def loss_val(model, X, y, batch=512):
     with torch.no_grad():
         for i in range(0, len(X), batch):
             pred = prever(model, X[i:i + batch])
-            total += ((pred - y[i:i + batch]) ** 2).mean(dim=1).sum().item()
+            total += ((pred - y[i:i + batch].to(DEV)) ** 2).mean(dim=1).sum().item()
     return total / len(X)
 
 
@@ -101,7 +104,7 @@ def treinar(mat, tag, epocas, verbose=True):
         for i in barra:
             idx = perm[i:i + T["batch"]]
             opt.zero_grad()
-            loss = ((prever(model, Xtr[idx]) - ytr[idx]) ** 2).mean()
+            loss = ((prever(model, Xtr[idx]) - ytr[idx].to(DEV)) ** 2).mean()
             loss.backward()
             opt.step()
             sched.step()
@@ -120,7 +123,7 @@ def treinar(mat, tag, epocas, verbose=True):
     C.TAB_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(log).to_csv(C.TAB_DIR / f"mtst_{tag}_log.csv", index=False)
     print(f"[{tag}] melhor época: {melhor_ep} (val {melhor:.3f})")
-    model.load_state_dict(torch.load(ckpt))
+    model.load_state_dict(torch.load(ckpt, map_location=DEV))
     return model, mu, sd
 
 
