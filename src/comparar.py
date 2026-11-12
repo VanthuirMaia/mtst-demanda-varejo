@@ -48,9 +48,9 @@ def fig_previsoes(mat):
         ax.set_title(f"{s} (média no treino: {escala[s]:.0f})", fontsize=10)
         ax.tick_params(axis="x", labelrotation=30)
     h, l = axs[0, 0].get_legend_handles_labels()
-    fig.legend(h, l, loc="upper center", ncol=4, frameon=False)
-    fig.suptitle("Janela 1 de teste (origem 2017-01-01)", y=0.995, fontsize=11)
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.legend(h, l, loc="upper center", ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.95))
+    fig.suptitle("Janela 1 de teste (origem 2017-01-01)", y=0.99, fontsize=11)
+    fig.tight_layout(rect=(0, 0, 1, 0.90))
     fig.savefig(C.FIG_DIR / "previsoes_exemplo.png")
     plt.close(fig)
 
