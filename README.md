@@ -70,31 +70,46 @@ arquivo tem cabeçalho com origem e alterações. Dependências extras: `yacs` e
 - **Treino (`src/train.py`):** cada série é padronizada com média e desvio do período de
   treino (como o pipeline oficial); loss e early stopping na escala normalizada. RevIN continua
   ligado. Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3, como o lradj `TST` do oficial),
-  batch 128, até 30 épocas, paciência 4, janelas de treino com stride 7. Na avaliação, as
+  batch 128, janelas de treino com stride 7. Épocas: ver v1 e v2 em Resultados (v2 atual: 15
+  épocas fixas, sem early stopping, melhor checkpoint pela validação). Na avaliação, as
   previsões são desnormalizadas, truncadas em >= 0 e as métricas calculadas na escala original.
 - **Modos:** `--modo global` (500 séries), `--modo local --loja N`, `--modo local_todas`
   (um modelo por loja, métricas sobre as 500 séries).
 
 ## Resultados (média das 4 janelas de teste)
 
+Duas configurações de treino (o resto da configuração é igual):
+
+- **v1:** OneCycleLR planejado para 30 épocas + early stopping (paciência 4). **Problema do
+  agendador:** o pico do lr cai na época ~9 e o early stopping parou o treino por volta da
+  época 6 a 12, antes da fase de decaimento (nos locais, o melhor ponto foi a época 2, com o lr
+  ainda subindo).
+- **v2:** OneCycleLR com 15 épocas fixas (max_lr 5e-4, pct_start 0,3), sem early stopping; só
+  o melhor checkpoint pela loss de validação é guardado e usado no teste.
+
 | modelo | MAE | RMSE | sMAPE | MASE |
 |---|---|---|---|---|
 | naive semanal | 11.421 | 14.011 | 21.589 | 1.397 |
-| naive anual | **8.564** | **10.759** | **17.115** | **1.073** |
-| MTST global | 10.614 | 12.934 | 19.185 | 1.281 |
-| MTST local (1 por loja) | 9.886 | 12.229 | 18.015 | 1.197 |
+| **naive anual** | **8.564** | **10.759** | **17.115** | **1.073** |
+| MTST global v1 | 10.614 | 12.934 | 19.185 | 1.281 |
+| MTST global v2 | 10.595 | 12.943 | 19.131 | 1.279 |
+| MTST local v1 (1 por loja) | 9.886 | 12.229 | 18.015 | 1.197 |
+| MTST local v2 (1 por loja) | 10.627 | 13.022 | 19.300 | 1.285 |
 
-Tabela completa por janela: `results/tables/comparacao.csv`. Figuras:
-`results/figures/previsoes_exemplo.png` e `curvas_treino.png`.
+Tabela por janela: `results/tables/comparacao.csv` (arquivos `*_v1.csv` = v1). Figuras:
+`results/figures/previsoes_exemplo.png` (v2) e `curvas_treino.png` (v2, com o lr).
 
-- O MTST local ficou melhor que o global (MASE 1,20 vs 1,28), mas **nenhum dos dois bate o
-  naive sazonal anual** (1,07) com esta configuração.
-- Treino: global parou na época 12 (melhor: 8), 44,9 min. Cada loja parou na época 6 (melhor: 2),
-  ~2,3 min por loja, 23,2 min no total.
-- Observação: os modelos locais atingem o melhor ponto na época 2, quando o OneCycleLR ainda
-  está em lr baixo (aquecimento do ciclo de 30 épocas); o early stopping interrompe antes da
-  fase de decaimento do lr. O gap treino x validação é grande (ex.: global 0,33 vs 0,87).
-  Resultados são de uma única seed e uma única configuração, ainda sem ajuste de hiperparâmetros.
+- **Nenhuma configuração bate o naive sazonal anual** (MASE 1,07).
+- **Global:** v1 e v2 praticamente iguais (1,281 vs 1,279); o decaimento do lr não mudou o resultado.
+- **Local:** a v2 ficou **pior** que a v1 (1,285 vs 1,197), mesmo com o ciclo completo: treinar
+  mais (melhor época 10 a 15 contra 2) melhora a loss de treino, mas não a generalização. A v1,
+  que parou cedo, funcionou como uma regularização. Nas lojas 4 e 10 o melhor ponto da v2 foi a
+  época 1. Com a v2, global e local ficam equivalentes (1,279 vs 1,285).
+- **Melhor época (v1 / v2):** global 8 / 8; locais 2 / 10, 13, 15, 1, 15, 13, 15, 14, 13, 1 (lojas 1 a 10).
+- **Tempo de treino (v1 / v2):** global 44,9 / 57,5 min; 10 locais 23,2 / 66,7 min; total 68 / 124 min.
+- Gap treino x validação grande em todos (ex.: global 0,32 vs 0,86 na loss normalizada), sugerindo
+  overfitting ou deslocamento de nível entre treino e validação (hipótese, não verificada).
+  Uma seed, sem ajuste de hiperparâmetros.
 
 ## Como rodar
 
@@ -131,8 +146,10 @@ results/         figures/ e tables/
 - [x] MTST oficial vendorizado, config diária e `train.py` (smoke test OK)
 - [x] Treino global
 - [x] Treino local (um modelo por loja)
-- [x] Comparação global vs. local nas 4 janelas de teste (local melhor que global; nenhum bate o naive anual)
-- [ ] Próximos: ajustar treino (ciclo do lr x early stopping, regularização), mais seeds
+- [x] Comparação global vs. local nas 4 janelas de teste (v1 e v2)
+- [x] Correção do agendador (v2): o decaimento do lr não melhorou o resultado
+- [ ] Próximos: regularização (dropout, weight decay, modelo menor), corrigir o deslocamento de
+  nível, mais seeds; avaliar o MTST local com early stopping por loja
 
 ## Referências
 
