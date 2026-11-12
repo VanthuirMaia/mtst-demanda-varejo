@@ -11,6 +11,7 @@ from src.baselines import seasonal_naive_yearly
 from src.data import get_test_origins, load_data
 
 COR = {"real": "#333333", "naive_anual": "#8a8a8a", "mtst_global": "#2a6fb0", "mtst_local_todas": "#d9822b"}
+COR_LR = "#6a8f3a"
 NOME = {"real": "real", "naive_anual": "naive anual", "mtst_global": "MTST global",
         "mtst_local_todas": "MTST local (por loja)"}
 plt.rcParams.update({"figure.dpi": 130, "axes.spines.top": False, "axes.spines.right": False,
@@ -18,8 +19,15 @@ plt.rcParams.update({"figure.dpi": 130, "axes.spines.top": False, "axes.spines.r
 
 
 def tabela_comparacao():
-    arqs = ["baselines.csv", "mtst_global.csv", "mtst_local_todas.csv"]
-    tab = pd.concat([pd.read_csv(C.TAB_DIR / a) for a in arqs], ignore_index=True)
+    # v1: OneCycleLR de 30 épocas + early stopping (parou antes do decaimento do lr)
+    # v2: OneCycleLR de 15 épocas fixas, sem early stopping
+    partes = [pd.read_csv(C.TAB_DIR / "baselines.csv")]
+    for nome in ["mtst_global", "mtst_local_todas"]:
+        for v, suf in [("v1", "_v1"), ("v2", "")]:
+            t = pd.read_csv(C.TAB_DIR / f"{nome}{suf}.csv")
+            t["modelo"] = f"{nome}_{v}"
+            partes.append(t)
+    tab = pd.concat(partes, ignore_index=True)
     tab.to_csv(C.TAB_DIR / "comparacao.csv", index=False)
     print(tab.to_string(index=False, float_format=lambda x: f"{x:.3f}"))
 
@@ -57,7 +65,7 @@ def fig_previsoes(mat):
 
 def fig_curvas():
     tags = ["global", "local_loja1", "local_loja2"]
-    fig, axs = plt.subplots(1, 3, figsize=(13, 3.8))
+    fig, axs = plt.subplots(1, 3, figsize=(14, 4))
     for ax, tag in zip(axs, tags):
         log = pd.read_csv(C.TAB_DIR / f"mtst_{tag}_log.csv")
         ax.plot(log.epoca, log.loss_treino, color=COR["mtst_global"], marker="o", ms=3, label="treino")
@@ -65,18 +73,31 @@ def fig_curvas():
         melhor = log.loc[log.loss_val.idxmin(), "epoca"]
         ax.axvline(melhor, color="#aaaaaa", ls=":", lw=1)
         ax.set(title=f"{tag} (melhor época: {melhor})", xlabel="época", ylabel="MSE (normalizado)")
-    axs[0].legend(frameon=False)
+        ax2 = ax.twinx()  # lr ao final de cada época
+        ax2.plot(log.epoca, log.lr, color=COR_LR, ls="--", lw=1.2, label="lr")
+        ax2.set_ylabel("lr", color=COR_LR)
+        ax2.grid(False)
+        ax2.spines["right"].set_visible(True)
+    h1, l1 = axs[0].get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    axs[0].legend(h1 + h2, l1 + l2, frameon=False)
     fig.tight_layout()
     fig.savefig(C.FIG_DIR / "curvas_treino.png")
     plt.close(fig)
 
 
 def resumo_treino():
-    print("\nÉpocas até parar / melhor época / tempo de treino (min):")
+    print("\nMelhor época (v1 / v2) e tempo de treino em min (v1 / v2):")
+    tot = [0.0, 0.0]
     for tag in ["global"] + [f"local_loja{i}" for i in range(1, 11)]:
-        log = pd.read_csv(C.TAB_DIR / f"mtst_{tag}_log.csv")
-        print(f"  {tag:12s} épocas={len(log):2d}  melhor={log.loc[log.loss_val.idxmin(), 'epoca']:2d}  "
-              f"tempo={log.segundos.sum() / 60:.1f}")
+        l1 = pd.read_csv(C.TAB_DIR / f"mtst_{tag}_log_v1.csv")
+        l2 = pd.read_csv(C.TAB_DIR / f"mtst_{tag}_log.csv")
+        t1, t2 = l1.segundos.sum() / 60, l2.segundos.sum() / 60
+        tot[0] += t1
+        tot[1] += t2
+        print(f"  {tag:12s} melhor: {l1.loc[l1.loss_val.idxmin(), 'epoca']:2d} / "
+              f"{l2.loc[l2.loss_val.idxmin(), 'epoca']:2d}   tempo: {t1:.1f} / {t2:.1f}")
+    print(f"  total treino (v1 / v2): {tot[0]:.1f} / {tot[1]:.1f} min")
 
 
 if __name__ == "__main__":
