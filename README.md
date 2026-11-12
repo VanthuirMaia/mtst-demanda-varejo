@@ -48,12 +48,38 @@ Notas:
 - **Lookback = 364.** Os dados são diários, e 364 dias = 52 semanas: o modelo enxerga o mesmo dia da semana do ano anterior, o que torna justa a comparação com o baseline sazonal anual (mesma informação disponível). Além disso, 364 é divisível por 7, 14 e 28, então os patches da Fase 2 se alinham a semanas. O 336 do paper vem de datasets horários e não se aplica aqui.
 - Seed fixa: 42.
 
+## Implementação do MTST
+
+O modelo é o **código oficial** (https://github.com/networkslab/MTST, commit `d52b6b5`),
+vendorizado em `src/mtst_oficial/`. Arquivos copiados: `models/MTST.py`,
+`layers/MTST_backbone.py`, `layers/PatchTST_layers.py`, `layers/RevIN.py`,
+`layers/rel_pe.py`. Única alteração: imports (`layers.*` -> `src.mtst_oficial.*`); cada
+arquivo tem cabeçalho com origem e alterações. Dependências extras: `yacs` e `einops`.
+
+- **Licença:** o repositório oficial **não tem arquivo LICENSE** (nem menção no README).
+  O código é derivado do PatchTST. Uso aqui é acadêmico, com atribuição.
+- **Construção:** o construtor recebe um objeto `configs` (argparse); montamos com
+  `types.SimpleNamespace(**config.MTST)`, sem reescrever o modelo.
+- **Configuração para dados diários (`config.MTST`):** lookback 364, horizonte 90, `enc_in=1`;
+  3 ramos com patch = stride = 7, 14 e 28 dias (52, 26 e 13 tokens); 2 camadas, d_model 64,
+  4 cabeças, d_ff 128, dropout 0,2, RevIN e RPE (`rel_sin`) ligados.
+- **Diferenças em relação aos scripts oficiais:** o oficial usa patches com 50% de sobreposição
+  (stride = patch/2), `padding_patch='end'`, d_model 128, 16 cabeças e lradj `TST` em alguns
+  datasets. Aqui: stride = patch, sem padding (`None`), modelo menor (CPU) e lr constante.
+- **Treino (`src/train.py`):** Adam 1e-3, MSE (na escala original, pois o RevIN
+  desnormaliza), batch 128, até 30 épocas, early stopping com paciência 4 na validação.
+  Janelas de treino com stride 7. Previsões de teste truncadas em >= 0.
+- **Modos:** `--modo global` (500 séries), `--modo local --loja N`, `--modo local_todas`
+  (um modelo por loja, métricas sobre as 500 séries).
+
 ## Como rodar
 
 ```bash
 uv sync
 uv run python -m src.eda         # figuras em results/figures/
 uv run python -m src.baselines   # results/tables/baselines.csv
+uv run python -m src.train --modo global   # ou: --modo local --loja 3 | --modo local_todas
+# teste rápido: --epocas 1 --amostra 0.1
 ```
 
 ## Estrutura
@@ -65,6 +91,8 @@ src/config.py    constantes e caminhos
 src/data.py      carga, origens de teste, janelas
 src/metrics.py   mae, rmse, smape, mase
 src/baselines.py naive semanal e anual
+src/train.py     treino e avaliação do MTST
+src/mtst_oficial/ modelo oficial vendorizado
 src/eda.py       figuras e estatísticas
 results/         figures/ e tables/
 ```
@@ -74,7 +102,7 @@ results/         figures/ e tables/
 - [x] Setup (uv, git), config, carga de dados, métricas
 - [x] Baselines naive sazonais
 - [x] EDA
-- [ ] Implementação do MTST (Fase 2)
+- [x] MTST oficial vendorizado, config diária e `train.py` (smoke test OK)
 - [ ] Treino global
 - [ ] Treino local
 - [ ] Comparação global vs. local nas 4 janelas de teste
