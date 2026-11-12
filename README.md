@@ -73,6 +73,13 @@ arquivo tem cabeçalho com origem e alterações. Dependências extras: `yacs` e
   batch 128, janelas de treino com stride 7. Épocas: ver v1 e v2 em Resultados (v2 atual: 15
   épocas fixas, sem early stopping, melhor checkpoint pela validação). Na avaliação, as
   previsões são desnormalizadas, truncadas em >= 0 e as métricas calculadas na escala original.
+- **Dupla normalização (observação):** as janelas passam por duas normalizações. A padronização
+  por série (média e desvio do treino) é feita por nós e o RevIN, ligado no forward em treino e
+  avaliação, normaliza de novo cada janela de entrada (média e desvio da própria janela, sem
+  parâmetros afins). Como o RevIN é invariante a deslocamento e escala da entrada, ele anula a
+  padronização na entrada do modelo; o efeito dela fica só na **loss**, onde iguala o peso das
+  séries (a saída é desnormalizada pelo RevIN para a escala da série padronizada). Não foi
+  testado o treino sem a padronização.
 - **Modos:** `--modo global` (500 séries), `--modo local --loja N`, `--modo local_todas`
   (um modelo por loja, métricas sobre as 500 séries).
 
