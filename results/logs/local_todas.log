@@ -1,0 +1,99 @@
+Dados: shape=(1826, 500) (dias x séries), período 2013-01-01 a 2017-12-31
+[local_loja1] amostras treino=5900 val=700 séries=50
+[local_loja1] parâmetros: 2,923,212
+[local_loja1] época 01 | treino 1.237 | val 1.118 | lr 3.45e-05 | 22s *
+[local_loja1] época 02 | treino 0.799 | val 0.968 | lr 7.64e-05 | 22s *
+[local_loja1] época 03 | treino 0.623 | val 1.158 | lr 1.41e-04 | 22s
+[local_loja1] época 04 | treino 0.567 | val 1.171 | lr 2.19e-04 | 22s
+[local_loja1] época 05 | treino 0.541 | val 1.118 | lr 3.03e-04 | 23s
+[local_loja1] época 06 | treino 0.519 | val 1.178 | lr 3.81e-04 | 22s
+[local_loja1] early stopping (paciência 4)
+[local_loja2] amostras treino=5900 val=700 séries=50
+[local_loja2] parâmetros: 2,923,212
+[local_loja2] época 01 | treino 1.171 | val 1.113 | lr 3.45e-05 | 24s *
+[local_loja2] época 02 | treino 0.736 | val 0.966 | lr 7.64e-05 | 24s *
+[local_loja2] época 03 | treino 0.554 | val 1.080 | lr 1.41e-04 | 23s
+[local_loja2] época 04 | treino 0.498 | val 1.171 | lr 2.19e-04 | 24s
+[local_loja2] época 05 | treino 0.470 | val 1.073 | lr 3.03e-04 | 23s
+[local_loja2] época 06 | treino 0.445 | val 1.223 | lr 3.81e-04 | 23s
+[local_loja2] early stopping (paciência 4)
+[local_loja3] amostras treino=5900 val=700 séries=50
+[local_loja3] parâmetros: 2,923,212
+[local_loja3] época 01 | treino 1.199 | val 1.112 | lr 3.45e-05 | 23s *
+[local_loja3] época 02 | treino 0.758 | val 0.950 | lr 7.64e-05 | 23s *
+[local_loja3] época 03 | treino 0.578 | val 1.123 | lr 1.41e-04 | 24s
+[local_loja3] época 04 | treino 0.520 | val 1.173 | lr 2.19e-04 | 23s
+[local_loja3] época 05 | treino 0.493 | val 1.096 | lr 3.03e-04 | 24s
+[local_loja3] época 06 | treino 0.472 | val 1.298 | lr 3.81e-04 | 24s
+[local_loja3] early stopping (paciência 4)
+[local_loja4] amostras treino=5900 val=700 séries=50
+[local_loja4] parâmetros: 2,923,212
+[local_loja4] época 01 | treino 1.210 | val 1.158 | lr 3.45e-05 | 23s *
+[local_loja4] época 02 | treino 0.773 | val 1.028 | lr 7.64e-05 | 23s *
+[local_loja4] época 03 | treino 0.594 | val 1.244 | lr 1.41e-04 | 23s
+[local_loja4] época 04 | treino 0.537 | val 1.332 | lr 2.19e-04 | 24s
+[local_loja4] época 05 | treino 0.509 | val 1.277 | lr 3.03e-04 | 23s
+[local_loja4] época 06 | treino 0.487 | val 1.266 | lr 3.81e-04 | 26s
+[local_loja4] early stopping (paciência 4)
+[local_loja5] amostras treino=5900 val=700 séries=50
+[local_loja5] parâmetros: 2,923,212
+[local_loja5] época 01 | treino 1.274 | val 1.100 | lr 3.45e-05 | 23s *
+[local_loja5] época 02 | treino 0.841 | val 0.991 | lr 7.64e-05 | 22s *
+[local_loja5] época 03 | treino 0.667 | val 1.119 | lr 1.41e-04 | 22s
+[local_loja5] época 04 | treino 0.612 | val 1.155 | lr 2.19e-04 | 22s
+[local_loja5] época 05 | treino 0.585 | val 1.232 | lr 3.03e-04 | 22s
+[local_loja5] época 06 | treino 0.563 | val 1.251 | lr 3.81e-04 | 23s
+[local_loja5] early stopping (paciência 4)
+[local_loja6] amostras treino=5900 val=700 séries=50
+[local_loja6] parâmetros: 2,923,212
+[local_loja6] época 01 | treino 1.276 | val 1.079 | lr 3.45e-05 | 23s *
+[local_loja6] época 02 | treino 0.839 | val 0.935 | lr 7.64e-05 | 22s *
+[local_loja6] época 03 | treino 0.665 | val 1.052 | lr 1.41e-04 | 22s
+[local_loja6] época 04 | treino 0.610 | val 1.064 | lr 2.19e-04 | 22s
+[local_loja6] época 05 | treino 0.582 | val 0.981 | lr 3.03e-04 | 22s
+[local_loja6] época 06 | treino 0.563 | val 1.086 | lr 3.81e-04 | 22s
+[local_loja6] early stopping (paciência 4)
+[local_loja7] amostras treino=5900 val=700 séries=50
+[local_loja7] parâmetros: 2,923,212
+[local_loja7] época 01 | treino 1.291 | val 1.136 | lr 3.45e-05 | 23s *
+[local_loja7] época 02 | treino 0.858 | val 0.991 | lr 7.64e-05 | 23s *
+[local_loja7] época 03 | treino 0.686 | val 1.178 | lr 1.41e-04 | 23s
+[local_loja7] época 04 | treino 0.628 | val 1.238 | lr 2.19e-04 | 22s
+[local_loja7] época 05 | treino 0.602 | val 1.180 | lr 3.03e-04 | 24s
+[local_loja7] época 06 | treino 0.584 | val 1.346 | lr 3.81e-04 | 23s
+[local_loja7] early stopping (paciência 4)
+[local_loja8] amostras treino=5900 val=700 séries=50
+[local_loja8] parâmetros: 2,923,212
+[local_loja8] época 01 | treino 1.182 | val 1.113 | lr 3.45e-05 | 23s *
+[local_loja8] época 02 | treino 0.744 | val 0.972 | lr 7.64e-05 | 23s *
+[local_loja8] época 03 | treino 0.563 | val 1.161 | lr 1.41e-04 | 24s
+[local_loja8] época 04 | treino 0.507 | val 1.221 | lr 2.19e-04 | 23s
+[local_loja8] época 05 | treino 0.481 | val 1.114 | lr 3.03e-04 | 24s
+[local_loja8] época 06 | treino 0.457 | val 1.225 | lr 3.81e-04 | 30s
+[local_loja8] early stopping (paciência 4)
+[local_loja9] amostras treino=5900 val=700 séries=50
+[local_loja9] parâmetros: 2,923,212
+[local_loja9] época 01 | treino 1.206 | val 1.081 | lr 3.45e-05 | 23s *
+[local_loja9] época 02 | treino 0.771 | val 0.947 | lr 7.64e-05 | 23s *
+[local_loja9] época 03 | treino 0.591 | val 1.077 | lr 1.41e-04 | 22s
+[local_loja9] época 04 | treino 0.536 | val 1.130 | lr 2.19e-04 | 23s
+[local_loja9] época 05 | treino 0.509 | val 1.067 | lr 3.03e-04 | 23s
+[local_loja9] época 06 | treino 0.485 | val 1.243 | lr 3.81e-04 | 22s
+[local_loja9] early stopping (paciência 4)
+[local_loja10] amostras treino=5900 val=700 séries=50
+[local_loja10] parâmetros: 2,923,212
+[local_loja10] época 01 | treino 1.191 | val 1.106 | lr 3.45e-05 | 23s *
+[local_loja10] época 02 | treino 0.756 | val 0.933 | lr 7.64e-05 | 24s *
+[local_loja10] época 03 | treino 0.577 | val 1.117 | lr 1.41e-04 | 25s
+[local_loja10] época 04 | treino 0.520 | val 1.200 | lr 2.19e-04 | 23s
+[local_loja10] época 05 | treino 0.494 | val 1.214 | lr 3.03e-04 | 23s
+[local_loja10] época 06 | treino 0.470 | val 1.179 | lr 3.81e-04 | 23s
+[local_loja10] early stopping (paciência 4)
+          modelo janela     origem    mae   rmse  smape  mase
+mtst_local_todas      1 2017-01-01  8.314 10.320 19.426 1.012
+mtst_local_todas      2 2017-04-01 10.664 13.065 16.990 1.289
+mtst_local_todas      3 2017-06-30 10.831 13.252 16.773 1.310
+mtst_local_todas      4 2017-09-28  9.734 12.279 18.872 1.178
+mtst_local_todas  media        NaN  9.886 12.229 18.015 1.197
+salvo em D:\UPE\02 - ST - Series Temporais\ProjetoST\ProjetoFinal\results\tables\mtst_local_todas.csv
+tempo total: 23.2 min
