@@ -1,0 +1,18 @@
+[project]
+name = "mtst-demanda"
+version = "0.1.0"
+description = "MTST em previsão de demanda (Store Item Demand): global vs. local"
+authors = [
+    { name = "VanthuirMaia", email = "vanmaiasf@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "torch>=2.15.0",
+    "tqdm>=4.70.1",
+]
+
+[tool.uv]
+package = false
