@@ -63,14 +63,38 @@ arquivo tem cabeçalho com origem e alterações. Dependências extras: `yacs` e
 - **Configuração para dados diários (`config.MTST`):** lookback 364, horizonte 90, `enc_in=1`;
   3 ramos com patch = stride = 7, 14 e 28 dias (52, 26 e 13 tokens); 2 camadas, d_model 64,
   4 cabeças, d_ff 128, dropout 0,2, RevIN e RPE (`rel_sin`) ligados.
-- **Diferenças em relação aos scripts oficiais:** o oficial usa patches com 50% de sobreposição
-  (stride = patch/2), `padding_patch='end'`, d_model 128, 16 cabeças e lradj `TST` em alguns
-  datasets. Aqui: stride = patch, sem padding (`None`), modelo menor (CPU) e lr constante.
-- **Treino (`src/train.py`):** Adam 1e-3, MSE (na escala original, pois o RevIN
-  desnormaliza), batch 128, até 30 épocas, early stopping com paciência 4 na validação.
-  Janelas de treino com stride 7. Previsões de teste truncadas em >= 0.
+- **Divergências em relação aos scripts oficiais** (motivo: custo em CPU e dados diários):
+  patches **sem sobreposição** (stride = patch; o oficial usa stride = patch/2, ou seja, ~2x mais
+  tokens por ramo), **sem padding** (`padding_patch=None`; o oficial usa `'end'`) e modelo
+  **menor** (d_model 64 e 4 cabeças; o oficial usa d_model 128 e 16 cabeças, d_ff 256).
+- **Treino (`src/train.py`):** cada série é padronizada com média e desvio do período de
+  treino (como o pipeline oficial); loss e early stopping na escala normalizada. RevIN continua
+  ligado. Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3, como o lradj `TST` do oficial),
+  batch 128, até 30 épocas, paciência 4, janelas de treino com stride 7. Na avaliação, as
+  previsões são desnormalizadas, truncadas em >= 0 e as métricas calculadas na escala original.
 - **Modos:** `--modo global` (500 séries), `--modo local --loja N`, `--modo local_todas`
   (um modelo por loja, métricas sobre as 500 séries).
+
+## Resultados (média das 4 janelas de teste)
+
+| modelo | MAE | RMSE | sMAPE | MASE |
+|---|---|---|---|---|
+| naive semanal | 11.421 | 14.011 | 21.589 | 1.397 |
+| naive anual | **8.564** | **10.759** | **17.115** | **1.073** |
+| MTST global | 10.614 | 12.934 | 19.185 | 1.281 |
+| MTST local (1 por loja) | 9.886 | 12.229 | 18.015 | 1.197 |
+
+Tabela completa por janela: `results/tables/comparacao.csv`. Figuras:
+`results/figures/previsoes_exemplo.png` e `curvas_treino.png`.
+
+- O MTST local ficou melhor que o global (MASE 1,20 vs 1,28), mas **nenhum dos dois bate o
+  naive sazonal anual** (1,07) com esta configuração.
+- Treino: global parou na época 12 (melhor: 8), 44,9 min. Cada loja parou na época 6 (melhor: 2),
+  ~2,3 min por loja, 23,2 min no total.
+- Observação: os modelos locais atingem o melhor ponto na época 2, quando o OneCycleLR ainda
+  está em lr baixo (aquecimento do ciclo de 30 épocas); o early stopping interrompe antes da
+  fase de decaimento do lr. O gap treino x validação é grande (ex.: global 0,33 vs 0,87).
+  Resultados são de uma única seed e uma única configuração, ainda sem ajuste de hiperparâmetros.
 
 ## Como rodar
 
@@ -79,6 +103,7 @@ uv sync
 uv run python -m src.eda         # figuras em results/figures/
 uv run python -m src.baselines   # results/tables/baselines.csv
 uv run python -m src.train --modo global   # ou: --modo local --loja 3 | --modo local_todas
+uv run python -m src.comparar    # comparacao.csv e figuras (após treinar global e local_todas)
 # teste rápido: --epocas 1 --amostra 0.1
 ```
 
@@ -92,6 +117,7 @@ src/data.py      carga, origens de teste, janelas
 src/metrics.py   mae, rmse, smape, mase
 src/baselines.py naive semanal e anual
 src/train.py     treino e avaliação do MTST
+src/comparar.py  tabela de comparação e figuras
 src/mtst_oficial/ modelo oficial vendorizado
 src/eda.py       figuras e estatísticas
 results/         figures/ e tables/
@@ -103,9 +129,10 @@ results/         figures/ e tables/
 - [x] Baselines naive sazonais
 - [x] EDA
 - [x] MTST oficial vendorizado, config diária e `train.py` (smoke test OK)
-- [ ] Treino global
-- [ ] Treino local
-- [ ] Comparação global vs. local nas 4 janelas de teste
+- [x] Treino global
+- [x] Treino local (um modelo por loja)
+- [x] Comparação global vs. local nas 4 janelas de teste (local melhor que global; nenhum bate o naive anual)
+- [ ] Próximos: ajustar treino (ciclo do lr x early stopping, regularização), mais seeds
 
 ## Referências
 
