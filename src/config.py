@@ -11,6 +11,7 @@ TRAIN_CSV = RAW_DIR / "train.csv"
 CKPT_DIR = RAIZ / "results" / "checkpoints"
 FIG_DIR = RAIZ / "results" / "figures"
 TAB_DIR = RAIZ / "results" / "tables"
+LOG_DIR = RAIZ / "results" / "logs"
 
 # --- Reprodutibilidade ---
 SEED = 42
@@ -54,7 +55,8 @@ MTST = dict(
 )
 
 # --- Treino ---
-TREINO = dict(lr=1e-3, batch=128, epocas=30, paciencia=4, stride_treino=7, stride_val=7)
+TREINO = dict(max_lr=5e-4, pct_start=0.3, batch=128, epocas=30, paciencia=4,
+              stride_treino=7, stride_val=7)  # Adam + OneCycleLR
 
 
 def to_ts(s):

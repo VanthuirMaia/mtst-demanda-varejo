@@ -9,6 +9,7 @@ Exemplos:
 import argparse
 import os
 import random
+import sys
 import time
 from types import SimpleNamespace
 
@@ -60,9 +61,18 @@ def loss_val(model, X, y, batch=512):
     return total / len(X)
 
 
+def stats_treino(mat):
+    """Média e desvio de cada série no período de treino (até TRAIN_END). -> (mu, sd), arrays (S,)"""
+    tr = mat.loc[:C.TRAIN_END]
+    return tr.mean().to_numpy(dtype="float32"), tr.std().to_numpy(dtype="float32")
+
+
 def treinar(mat, tag, epocas, verbose=True):
-    """Treina em `mat` (DataFrame T x séries). Devolve o modelo com os melhores pesos na validação."""
+    """Treina em `mat` (DataFrame T x séries) padronizado por série (stats do treino).
+    Loss de treino e validação na escala normalizada. Devolve (modelo, mu, sd)."""
     T = C.TREINO
+    mu, sd = stats_treino(mat)
+    mat = (mat - mu) / sd
     Xtr, ytr = make_windows(mat, mat.index[0], C.TRAIN_END, stride=T["stride_treino"])
     Xva, yva = make_windows(mat, pd.Timestamp(C.TRAIN_END) + pd.Timedelta(days=1), C.VAL_END,
                             stride=T["stride_val"])
@@ -71,7 +81,11 @@ def treinar(mat, tag, epocas, verbose=True):
 
     model = criar_modelo()
     print(f"[{tag}] parâmetros: {contar_parametros(model):,}")
-    opt = torch.optim.Adam(model.parameters(), lr=T["lr"])
+    opt = torch.optim.Adam(model.parameters(), lr=T["max_lr"])
+    passos_ep = int(np.ceil(len(Xtr) / T["batch"]))
+    # OneCycleLR (como o lradj 'TST' do oficial); um passo por batch, ciclo sobre o máximo de épocas
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=T["max_lr"], pct_start=T["pct_start"],
+                                                steps_per_epoch=passos_ep, epochs=epocas)
     gen = torch.Generator().manual_seed(C.SEED)
 
     C.CKPT_DIR.mkdir(parents=True, exist_ok=True)
@@ -83,13 +97,14 @@ def treinar(mat, tag, epocas, verbose=True):
         model.train()
         perm = torch.randperm(len(Xtr), generator=gen)
         soma = 0.0
-        barra = tqdm(range(0, len(perm), T["batch"]), desc=f"época {ep}", leave=False, disable=not verbose, mininterval=60)
+        barra = tqdm(range(0, len(perm), T["batch"]), desc=f"época {ep}", leave=False, disable=not (verbose and sys.stderr.isatty()), mininterval=60)
         for i in barra:
             idx = perm[i:i + T["batch"]]
             opt.zero_grad()
             loss = ((prever(model, Xtr[idx]) - ytr[idx]) ** 2).mean()
             loss.backward()
             opt.step()
+            sched.step()
             soma += loss.item() * len(idx)
         l_tr = soma / len(Xtr)
         l_va = loss_val(model, Xva, yva)
@@ -100,7 +115,7 @@ def treinar(mat, tag, epocas, verbose=True):
             torch.save(model.state_dict(), ckpt)
         else:
             sem_melhora += 1
-        print(f"[{tag}] época {ep:02d} | treino {l_tr:.3f} | val {l_va:.3f} | {dt:.0f}s{marca}")
+        print(f"[{tag}] época {ep:02d} | treino {l_tr:.3f} | val {l_va:.3f} | lr {sched.get_last_lr()[0]:.2e} | {dt:.0f}s{marca}")
         log.append({"epoca": ep, "loss_treino": l_tr, "loss_val": l_va, "segundos": dt})
         if sem_melhora >= T["paciencia"]:
             print(f"[{tag}] early stopping (paciência {T['paciencia']})")
@@ -109,15 +124,17 @@ def treinar(mat, tag, epocas, verbose=True):
     C.TAB_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(log).to_csv(C.TAB_DIR / f"mtst_{tag}_log.csv", index=False)
     model.load_state_dict(torch.load(ckpt))
-    return model
+    return model, mu, sd
 
 
-def prever_teste(model, mat):
-    """Para cada origem de teste: (y_true, y_pred clipado em >= 0), ambos (n_series, horizon)."""
+def prever_teste(model, mat, mu, sd):
+    """Para cada origem de teste: (y_true, y_pred), ambos (n_series, horizon), escala original.
+    Entrada normalizada com mu/sd do treino; previsão desnormalizada e clipada em >= 0."""
     saida = []
     for origem in get_test_origins():
         X, y = make_test_window(mat, origem)
-        pred = np.clip(prever_em_lotes(model, X), 0, None)
+        pred = prever_em_lotes(model, (X - mu[:, None]) / sd[:, None]) * sd[:, None] + mu[:, None]
+        pred = np.clip(pred, 0, None)
         saida.append((y, pred))
     return saida
 
@@ -149,36 +166,42 @@ def main():
     if args.modo == "local" and args.loja is None:
         ap.error("--modo local exige --loja N")
 
+    t_ini = time.time()
     torch.set_num_threads(os.cpu_count())
     fixar_seed()
     mat = load_data()
 
     if args.modo == "global":
         sub = selecionar_series(mat, frac=args.amostra)
-        model = treinar(sub, "global", args.epocas)
-        res, yt, nome = prever_teste(model, sub), y_treino(sub), "mtst_global"
+        model, mu, sd = treinar(sub, "global", args.epocas)
+        res, yt, nome = prever_teste(model, sub, mu, sd), y_treino(sub), "mtst_global"
     elif args.modo == "local":
         sub = selecionar_series(mat, loja=args.loja, frac=args.amostra)
         tag = f"local_loja{args.loja}"
-        model = treinar(sub, tag, args.epocas)
-        res, yt, nome = prever_teste(model, sub), y_treino(sub), f"mtst_{tag}"
+        model, mu, sd = treinar(sub, tag, args.epocas)
+        res, yt, nome = prever_teste(model, sub, mu, sd), y_treino(sub), f"mtst_{tag}"
     else:  # um modelo por loja; métricas sobre todas as séries juntas
         por_loja = []
         for loja in range(1, 11):
             fixar_seed()
             sub = selecionar_series(mat, loja=loja, frac=args.amostra)
-            model = treinar(sub, f"local_loja{loja}", args.epocas)
-            por_loja.append((prever_teste(model, sub), y_treino(sub)))
+            model, mu, sd = treinar(sub, f"local_loja{loja}", args.epocas)
+            por_loja.append((prever_teste(model, sub, mu, sd), y_treino(sub)))
         res = [(np.concatenate([r[0][k][0] for r in por_loja]),
                 np.concatenate([r[0][k][1] for r in por_loja])) for k in range(C.N_TEST_WINDOWS)]
         yt = np.concatenate([r[1] for r in por_loja])
         nome = "mtst_local_todas"
+
+    # previsões (janelas, séries, horizonte) para as figuras de comparação
+    C.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    np.save(C.PROCESSED_DIR / f"pred_{nome}.npy", np.stack([r[1] for r in res]))
 
     tab = tabela(nome, res, yt)
     saida = C.TAB_DIR / f"{nome}.csv"
     tab.to_csv(saida, index=False)
     print(tab.to_string(index=False, float_format=lambda x: f"{x:.3f}"))
     print("salvo em", saida)
+    print(f"tempo total: {(time.time() - t_ini) / 60:.1f} min")
 
 
 if __name__ == "__main__":
