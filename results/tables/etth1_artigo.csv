@@ -1,0 +1,5 @@
+horizonte,mse,mae,referencia
+96,0.358,0.390,"arXiv 2311.04147, Tabela 2 (p. 6 do PDF), ETTh1, MTST, L=336, multivariado"
+192,0.396,0.414,"arXiv 2311.04147, Tabela 2 (p. 6 do PDF), ETTh1, MTST, L=336, multivariado"
+336,0.391,0.420,"arXiv 2311.04147, Tabela 2 (p. 6 do PDF), ETTh1, MTST, L=336, multivariado"
+720,0.430,0.457,"arXiv 2311.04147, Tabela 2 (p. 6 do PDF), ETTh1, MTST, L=336, multivariado"

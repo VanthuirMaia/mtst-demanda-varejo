@@ -61,3 +61,29 @@ TREINO = dict(max_lr=5e-4, pct_start=0.3, batch=128, epocas=15,
 
 def to_ts(s):
     return pd.Timestamp(s)
+
+
+# =============================================================================
+# ETTh1 (Fase 3: replicação do experimento do artigo). Independente do varejo acima.
+# Fonte: ../MTST/scripts/MTST/etth1.sh (commit d52b6b5) + defaults de ../MTST/run_longExp.py
+# =============================================================================
+ETTH1_CSV = RAW_DIR / "ETTh1.csv"
+HORIZONTES_ETTH1 = (96, 192, 336, 720)
+
+ETTH1 = dict(
+    # modelo (etth1.sh); args não passados no .sh usam o default do run_longExp.py
+    modelo=dict(
+        seq_len=336, enc_in=7, e_layers=2, n_branches=2, n_heads=16, d_model=128, d_ff=256,
+        dropout=0.3, fc_dropout=0.3, head_dropout=0.1,
+        patch_len_ls="8, 16", stride_ls="4, 8", padding_patch="end", rel_pe="rel_sin",
+        # defaults do run_longExp.py
+        revin=1, affine=0, subtract_last=0, decomposition=0, kernel_size=25, individual=0,
+        store_attn=False, pre_norm=False, res_attn=False, pe="zeros", no_learn_pe=True,
+    ),
+    # treino (etth1.sh + defaults)
+    treino=dict(
+        seed=2021, features="M", batch_size=256, learning_rate=1e-4, train_epochs=100,
+        patience=20, lradj="type3", pct_start=0.3, l2=0.0, loss="mse",
+        label_len=0,
+    ),
+)
