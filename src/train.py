@@ -90,7 +90,7 @@ def treinar(mat, tag, epocas, verbose=True):
 
     C.CKPT_DIR.mkdir(parents=True, exist_ok=True)
     ckpt = C.CKPT_DIR / f"mtst_{tag}.pt"
-    melhor, sem_melhora, log = float("inf"), 0, []
+    melhor, melhor_ep, log = float("inf"), 0, []
 
     for ep in range(1, epocas + 1):
         t0 = time.time()
@@ -110,19 +110,16 @@ def treinar(mat, tag, epocas, verbose=True):
         l_va = loss_val(model, Xva, yva)
         dt = time.time() - t0
         marca = ""
-        if l_va < melhor:
-            melhor, sem_melhora, marca = l_va, 0, " *"
+        if l_va < melhor:  # só guarda o melhor checkpoint (sem early stopping)
+            melhor, melhor_ep, marca = l_va, ep, " *"
             torch.save(model.state_dict(), ckpt)
-        else:
-            sem_melhora += 1
         print(f"[{tag}] época {ep:02d} | treino {l_tr:.3f} | val {l_va:.3f} | lr {sched.get_last_lr()[0]:.2e} | {dt:.0f}s{marca}")
-        log.append({"epoca": ep, "loss_treino": l_tr, "loss_val": l_va, "segundos": dt})
-        if sem_melhora >= T["paciencia"]:
-            print(f"[{tag}] early stopping (paciência {T['paciencia']})")
-            break
+        log.append({"epoca": ep, "loss_treino": l_tr, "loss_val": l_va,
+                    "lr": sched.get_last_lr()[0], "segundos": dt})
 
     C.TAB_DIR.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(log).to_csv(C.TAB_DIR / f"mtst_{tag}_log.csv", index=False)
+    print(f"[{tag}] melhor época: {melhor_ep} (val {melhor:.3f})")
     model.load_state_dict(torch.load(ckpt))
     return model, mu, sd
 

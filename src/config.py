@@ -55,8 +55,8 @@ MTST = dict(
 )
 
 # --- Treino ---
-TREINO = dict(max_lr=5e-4, pct_start=0.3, batch=128, epocas=30, paciencia=4,
-              stride_treino=7, stride_val=7)  # Adam + OneCycleLR
+TREINO = dict(max_lr=5e-4, pct_start=0.3, batch=128, epocas=15,
+              stride_treino=7, stride_val=7)  # Adam + OneCycleLR; sem early stopping (v2)
 
 
 def to_ts(s):
