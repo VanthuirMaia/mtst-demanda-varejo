@@ -158,6 +158,31 @@ results/         figures/ e tables/
 - [ ] Próximos: regularização (dropout, weight decay, modelo menor), corrigir o deslocamento de
   nível, mais seeds; avaliar o MTST local com early stopping por loja
 
+## Replicação (ETTh1)
+
+**Objetivo:** validar a nossa configuração do MTST reproduzindo o experimento do artigo
+(Tabela 2, ETTh1, multivariado, L=336, horizontes 96/192/336/720), independente do varejo.
+
+**O que reproduz do código oficial** (`etth1.sh` + defaults de `run_longExp.py`, commit `d52b6b5`):
+- Dados: `Dataset_ETT_hour` (`src/ett.py`): split 12/4/4 meses, sobreposição de `seq_len` em val/teste,
+  `StandardScaler` ajustado só no treino, 7 variáveis. Tamanhos (T=96): 8209 / 2785 / 2785 janelas.
+- Modelo: 2 camadas, 2 ramos (patch 8 e 16, stride 4 e 8), `padding_patch='end'`, `d_model=128`,
+  16 cabeças, `d_ff=256`, dropout 0,3 / fc 0,3 / head 0,1, `rel_sin`, RevIN. Mesmo código do modelo.
+- Treino: Adam, MSE, lr 1e-4, `lradj=type3`, batch 256, até 100 épocas, early stopping (paciência 20), seed 2021.
+- Métricas: MSE e MAE na escala normalizada, janelas completas de teste (`drop_last`).
+- Números do artigo em `results/tables/etth1_artigo.csv`.
+
+Diferenças sem efeito: `StandardScaler` em numpy (sem sklearn); marcas de tempo não geradas (o MTST não as usa);
+o teste não é avaliado a cada época (no oficial a loss de teste é só impressa).
+
+```bash
+uv run python -m src.replicacao --horizonte 96                       # treino completo
+uv run python -m src.replicacao --horizonte 96 --epocas 1 --amostra 0.1   # smoke test
+```
+
+Saídas: `results/tables/etth1_h{H}.csv` (resultado) e `etth1_h{H}_log.csv` (curvas).
+Em CPU, ~13 min por época (ver estimativa no status).
+
 ## Referências
 
 - Zhang, Y.; Ma, L.; Pal, S.; Zhang, Y.; Coates, M. *Multi-resolution Time-Series Transformer for
