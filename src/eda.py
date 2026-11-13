@@ -23,9 +23,9 @@ MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "
 def salvar(fig, nome):
     C.FIG_DIR.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
-    fig.savefig(C.FIG_DIR / nome)
+    fig.savefig(C.FIG_DIR / (C.PREFIX + nome))
     plt.close(fig)
-    print("figura:", C.FIG_DIR / nome)
+    print("figura:", C.FIG_DIR / (C.PREFIX + nome))
 
 
 def fig_total(mat):
@@ -46,7 +46,7 @@ def fig_total(mat):
     ax.text(total.index[0], ymax, " treino", va="top", color="#444")
     ax.text(t_end, ymax, " val", va="top", color="#444")
     ax.text(t_ini, ymax, " teste (4x90d)", va="top", color="#444")
-    ax.set(title="Vendas totais diárias (500 séries)", ylabel="unidades/dia")
+    ax.set(title=f"Vendas totais diárias ({mat.shape[1]} séries, {C.DATASET})", ylabel="unidades/dia")
     ax.legend(loc="lower right", frameon=False)
     salvar(fig, "vendas_totais.png")
 
@@ -76,38 +76,89 @@ def fig_mes(mat):
 
 def fig_heatmap(mat):
     media = mat.mean()
-    grade = np.zeros((10, 50))
-    for col, v in media.items():
-        s, i = (int(p[1:]) for p in col.split("_"))
-        grade[s - 1, i - 1] = v
-    fig, ax = plt.subplots(figsize=(11, 4))
-    im = ax.imshow(grade, aspect="auto", cmap="Blues")
+    if C.DATASET == "m5":  # loja (10) x departamento (7)
+        lojas = sorted({"_".join(c.split("_")[:2]) for c in media.index})
+        deptos = sorted({"_".join(c.split("_")[2:]) for c in media.index})
+        grade = np.array([[media["_".join([l, d])] for d in deptos] for l in lojas])
+        fig, ax = plt.subplots(figsize=(9, 4.5))
+        im = ax.imshow(grade, aspect="auto", cmap="Blues")
+        ax.set_xticks(range(len(deptos)), labels=deptos, rotation=30, ha="right")
+        ax.set_yticks(range(len(lojas)), labels=lojas)
+        ax.set(title="Venda média diária por loja x departamento")
+    else:
+        grade = np.zeros((10, 50))
+        for col, v in media.items():
+            s, i = (int(p[1:]) for p in col.split("_"))
+            grade[s - 1, i - 1] = v
+        fig, ax = plt.subplots(figsize=(11, 4))
+        im = ax.imshow(grade, aspect="auto", cmap="Blues")
+        ax.set(title="Venda média diária por loja x item", xlabel="item", ylabel="loja")
+        ax.set_xticks(range(0, 50, 4), labels=range(1, 51, 4))
+        ax.set_yticks(range(10), labels=range(1, 11))
     ax.grid(False)
-    ax.set(title="Venda média diária por loja x item", xlabel="item", ylabel="loja")
-    ax.set_xticks(range(0, 50, 4), labels=range(1, 51, 4))
-    ax.set_yticks(range(10), labels=range(1, 11))
     fig.colorbar(im, ax=ax, label="unidades/dia")
-    salvar(fig, "heatmap_loja_item.png")
+    salvar(fig, "heatmap_loja_item.png" if C.DATASET != "m5" else "heatmap_loja_depto.png")
+
+
+def resumo_serie(mat):
+    """Uma linha por série: escala (média diária), CV (dp/média) e % de dias com venda zero."""
+    media, dp = mat.mean(), mat.std()
+    return pd.DataFrame({"media": media, "cv": dp / media, "pct_zeros": 100 * (mat == 0).mean()})
+
+
+def resumo_dataset(nome, mat):
+    r = resumo_serie(mat)
+    return {
+        "dataset": nome, "series": mat.shape[1], "dias": mat.shape[0],
+        "escala_media": r.media.mean(), "escala_min": r.media.min(), "escala_max": r.media.max(),
+        "razao_max_min": r.media.max() / r.media.min(),
+        "cv_medio": r.cv.mean(), "cv_min": r.cv.min(), "cv_max": r.cv.max(),
+        "pct_zeros_medio": r.pct_zeros.mean(), "pct_zeros_max": r.pct_zeros.max(),
+        "series_com_zeros_acima_1pct": int((r.pct_zeros > 1).sum()),
+    }
+
+
+def comparar_datasets():
+    """M5 (70 séries loja x depto) vs Store Item (500 séries): para a discussão sintético x real."""
+    from src.data import load_data
+    linhas = [resumo_dataset("M5 (loja x depto)", load_data("m5")),
+              resumo_dataset("Store Item (loja x item)", load_data("store_item"))]
+    tab = pd.DataFrame(linhas).set_index("dataset").T
+    C.TAB_DIR.mkdir(parents=True, exist_ok=True)
+    tab.to_csv(C.TAB_DIR / "m5_vs_store_item_eda.csv")
+    print("\n--- M5 vs Store Item ---")
+    print(tab.to_string(float_format=lambda x: f"{x:,.2f}"))
+    return tab
 
 
 def estatisticas(mat):
-    media, dp = mat.mean(), mat.std()
-    cv = dp / media
+    r = resumo_serie(mat)
+    media, cv = r.media, r.cv
+    C.TAB_DIR.mkdir(parents=True, exist_ok=True)
+    r.to_csv(C.TAB_DIR / f"{C.PREFIX}eda_por_serie.csv", index_label="serie")
     print("\n--- Estatísticas por série ---")
     print(f"Escala (média diária): média={media.mean():.1f}  min={media.min():.1f}  "
           f"max={media.max():.1f}  razão max/min={media.max() / media.min():.1f}")
     print(f"Coef. de variação:     média={cv.mean():.2f}  min={cv.min():.2f}  max={cv.max():.2f}")
     print(f"Zeros: {(mat == 0).sum().sum()} observações ({(mat == 0).mean().mean():.4%})")
     print(f"Total diário: média={mat.sum(axis=1).mean():.0f}")
+    print(f"% de dias zero por série: média={r.pct_zeros.mean():.2f}%  max={r.pct_zeros.max():.2f}% "
+          f"({r.pct_zeros.idxmax()})")
 
 
 def main():
     mat = load_data()
+    C.imprimir_splits()
     fig_total(mat)
     fig_semana(mat)
     fig_mes(mat)
     fig_heatmap(mat)
     estatisticas(mat)
+    if C.DATASET == "m5":
+        from src.m5 import dias_quase_zero
+        print("\nDias com venda total ~0 (< 5% da mediana):")
+        print(dias_quase_zero(mat).to_string())
+        comparar_datasets()
 
 
 if __name__ == "__main__":
