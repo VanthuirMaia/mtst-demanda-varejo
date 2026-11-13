@@ -62,6 +62,9 @@ maiores e eventos como o Natal.
 
 - **ARIMA com origem móvel:** para cada janela, ajustado em todo o histórico anterior à origem
   (treino + validação + janelas de teste anteriores), previsão de 90 dias clipada em >= 0.
+- **ARIMA x Transformers:** o ARIMA é **reajustado a cada origem** (histórico completo até a
+  origem). Os Transformers são **treinados uma vez** (treino + validação de seleção) e só usam o
+  histórico recente (os 364 dias anteriores) como entrada, sem reajuste de pesos nas janelas de teste.
 - Janelas de treino/validação: o horizonte fica dentro do intervalo do split; o lookback pode usar
   histórico anterior. Amostras channel-independent. Seed 42.
 - **Lookback = 364:** 52 semanas, o mesmo dia da semana do ano anterior (justo vs. naive anual),
@@ -101,12 +104,37 @@ arquivo tem cabeçalho com origem e alterações. Dependências extras: `yacs` e
   testado o treino sem a padronização.
 - **Treino global:** `uv run python -m src.train` (todas as séries do dataset configurado).
 
+## Seleção de parâmetros
+
+`src/selecao.py`: busca em grade usando **só treino e validação** (o teste não é tocado). Grades
+em `src/config.py` (`GRADE`), patches sem sobreposição (stride = patch), `d_ff = 2*d_model`, 4 cabeças,
+2 camadas, RevIN (e RPE no MTST) ligados; demais parâmetros como na configuração anterior.
+
+| Modelo | patches | d_model | dropout | configs |
+|---|---|---|---|---|
+| MTST | (7,14,28) ou (7,28,91) | 32, 64 | 0,2; 0,4 | 8 |
+| PatchTST | 7, 14 ou 28 | 32, 64 | 0,2; 0,4 | 6 |
+
+- **Critério:** MSE de validação na escala normalizada (melhor época de cada config).
+- **Protocolo (igual para todos):** 15 épocas fixas, Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3),
+  batch 128, seed 42, melhor checkpoint pela validação. Janelas de treino com **stride 1**
+  (66.360 amostras = 948 origens x 70 séries); validação com stride 7 (910 amostras).
+- **Saída:** `results/tables/m5_selecao.csv` (modelo, config, `val_mse_norm`, melhor época, nº de
+  parâmetros, tempo). **Retomável:** configs já no CSV são puladas.
+- **Treino final (`src/final.py`):** a melhor config de cada modelo é treinada com seeds 42, 43 e 44 e
+  avaliada nas 4 janelas de teste (previsão desnormalizada e clipada em >= 0). Saídas: `m5_final.csv`
+  (por seed), `m5_comparacao.csv` (naive, ARIMA, PatchTST, MTST; média e desvio amostral entre seeds
+  nos Transformers, colunas `<métrica>_dp`), `m5_previsoes_exemplo.png` e `m5_curvas_treino.png` (seed 42).
+- **Colab:** `notebooks/m5_colab.ipynb` (GPU; upload de `m5_store_dept.csv` e `pred_m5_arima.npy`).
+  Smoke test em CPU (1 época, stride 1): ~129 s/época no MTST e ~76 s no PatchTST;
+  `--smoke` grava em `results/smoke/` (ignorado pelo git).
+
 ## PatchTST
 
 Código oficial do PatchTST incluído no repositório do MTST (`models/PatchTST.py` e
 `layers/PatchTST_backbone.py`, commit `d52b6b5`), vendorizado em `src/patchtst_oficial/` com
 cabeçalho de atribuição; só mudam os imports (reaproveita `PatchTST_layers` e `RevIN` de
-`src/mtst_oficial/`, idênticos aos do MTST). Verificado por instanciação e forward; **ainda não treinado**.
+`src/mtst_oficial/`, idênticos aos do MTST). Verificado por instanciação e forward.
 
 ## Resultados (M5, média das 4 janelas de teste)
 
@@ -128,8 +156,9 @@ uv sync
 uv run python -m src.m5          # valida o M5 e lista os dias com venda ~0
 uv run python -m src.eda         # figuras m5_*, resumo e comparação com o Store Item
 uv run python -m src.baselines   # naive + ARIMA (~34 min); --sem-arima para só os naive
-uv run python -m src.train       # MTST global (--epocas 1 --amostra 0.1 para teste rápido)
-uv run python -m src.comparar    # tabela e figuras de comparação
+uv run python -m src.selecao     # grade de parâmetros (retomável; --smoke para teste)
+uv run python -m src.final       # treino final, teste, m5_comparacao.csv e figuras
+uv run python -m src.train --modelo mtst_global   # execução avulsa (--epocas 1 --amostra 0.1)
 # Store Item (preliminar): DATASET=store_item uv run python -m src.<modulo>
 ```
 
@@ -142,11 +171,13 @@ src/m5.py        leitura e validação do M5 (70 séries)
 src/data.py      load_data(), origens de teste, janelas
 src/metrics.py   mae, rmse, smape, mase, mse_norm, mae_norm
 src/baselines.py naive sazonal e ARIMA
+src/selecao.py   seleção de parâmetros em grade
+src/final.py     treino final (3 seeds), teste e comparação
 src/train.py     treino e avaliação do MTST global
-src/comparar.py  tabela de comparação e figuras
+src/comparar.py  figuras de comparação
 src/mtst_oficial/, src/patchtst_oficial/  modelos oficiais vendorizados
 src/eda.py       figuras e estatísticas
-results/         figures/ e tables/ (prefixo m5_ = M5)
+results/         figures/ e tables/ (prefixo m5_ = M5); store_item/ = experimento preliminar
 ```
 
 ## Status
@@ -155,7 +186,8 @@ results/         figures/ e tables/ (prefixo m5_ = M5)
 - [x] Config dataset-agnóstica, dados M5, métricas normalizadas, EDA
 - [x] Baselines no M5 (naive e ARIMA)
 - [x] PatchTST oficial vendorizado
-- [ ] Treino MTST e PatchTST globais no M5; comparação final
+- [x] Seleção de parâmetros (`selecao.py`), treino final (`final.py`) e notebook Colab prontos; smoke test em CPU OK
+- [ ] Rodar seleção e treino final no Colab; analisar a comparação
 
 ## Replicação (ETTh1)
 
