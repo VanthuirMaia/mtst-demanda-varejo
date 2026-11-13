@@ -12,6 +12,7 @@ import itertools
 import pandas as pd
 
 from src import config as C
+from src.backup import salvar_backup
 
 COLUNAS = ["modelo", "config", "val_mse_norm", "melhor_epoca", "n_parametros", "segundos"]
 
@@ -30,6 +31,7 @@ def configs(modelo):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true", help="1 config/modelo, 1 época, results/smoke/")
+    ap.add_argument("--backup", metavar="DIR", help="copia m5_* e pred_m5_* para DIR a cada config")
     ap.add_argument("--modelos", nargs="+", default=list(C.GRADE), choices=list(C.GRADE))
     args = ap.parse_args()
     if args.smoke:
@@ -63,6 +65,7 @@ def main():
             feito = pd.concat([feito, pd.DataFrame([linha])], ignore_index=True)
             feito.to_csv(saida, index=False)  # grava a cada config (retomada após desconexão)
             ja.add((modelo, cid))
+            salvar_backup(args.backup)
 
     print("\n" + feito.sort_values(["modelo", "val_mse_norm"]).to_string(index=False))
     print("salvo em", saida)

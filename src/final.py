@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from src import config as C
+from src.backup import salvar_backup
 from src.metrics import METRICAS
 
 MODELOS = ["patchtst_global", "mtst_global"]
@@ -47,6 +48,7 @@ def tabela_comparacao(final, base):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--backup", metavar="DIR", help="copia m5_* e pred_m5_* para DIR a cada seed")
     args = ap.parse_args()
     base_tab = C.TAB_DIR / f"{C.PREFIX}baselines.csv"
     base_arima = C.PROCESSED_DIR / f"pred_{C.PREFIX}arima.npy"
@@ -98,6 +100,7 @@ def main():
                 final = final[~((final.modelo == modelo) & (final.seed == seed))]
             final = pd.concat([final, tab], ignore_index=True)
             final.to_csv(f_final, index=False)  # grava a cada seed (retomada)
+            salvar_backup(args.backup)
 
     base = pd.read_csv(C.TAB_DIR / f"{C.PREFIX}baselines.csv")
     comp = tabela_comparacao(final, base)
@@ -106,6 +109,7 @@ def main():
 
     fig_previsoes(mat)
     fig_curvas()
+    salvar_backup(args.backup)
     print("figuras em", C.FIG_DIR)
 
 
