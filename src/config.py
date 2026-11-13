@@ -116,8 +116,8 @@ def config_modelo(modelo, patch, d_model, dropout):
 
 # --- Grades da seleção de parâmetros (src/selecao.py): só treino e validação ---
 GRADE = dict(
-    mtst_global=dict(patch=[(7, 14, 28), (7, 28, 91)], d_model=[32, 64], dropout=[0.2, 0.4]),
-    patchtst_global=dict(patch=[7, 14, 28], d_model=[32, 64], dropout=[0.2, 0.4]),
+    mtst_global=dict(patch=[(7, 14, 28), (7, 28, 91)], d_model=[32, 64], dropout=[0.2, 0.4, 0.6]),
+    patchtst_global=dict(patch=[7, 14, 28], d_model=[32, 64], dropout=[0.2, 0.4, 0.6]),
 )
 SEEDS_FINAL = (42, 43, 44)
 
