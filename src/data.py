@@ -5,7 +5,17 @@ import pandas as pd
 from src import config as C
 
 
-def load_data():
+def load_data(dataset=None):
+    """Matriz (T dias x N séries) do dataset configurado (C.DATASET) ou do pedido.
+    m5: 70 séries 'ESTADO_n_DEPT_k' | store_item: 500 séries 's{store}_i{item}'."""
+    dataset = dataset or C.DATASET
+    if dataset == "m5":
+        from src.m5 import load_m5
+        return load_m5()
+    return load_store_item()
+
+
+def load_store_item():
     """Lê train.csv e devolve DataFrame (T dias x 500 séries), colunas 's{store}_i{item}'."""
     if not C.TRAIN_CSV.exists():
         raise FileNotFoundError(
