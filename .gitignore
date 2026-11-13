@@ -17,3 +17,5 @@ data/processed/*
 
 # Modelos
 *.pt
+results/smoke/
+data/processed/smoke/
