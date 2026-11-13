@@ -48,6 +48,7 @@ def tabela_comparacao(final, base):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--seeds", type=int, nargs="+", help="seeds (padrão: config; no smoke, só 42)")
     ap.add_argument("--backup", metavar="DIR", help="copia m5_* e pred_m5_* para DIR a cada seed")
     args = ap.parse_args()
     base_tab = C.TAB_DIR / f"{C.PREFIX}baselines.csv"
@@ -59,7 +60,7 @@ def main():
         shutil.copy(base_tab, C.TAB_DIR)
         if base_arima.exists():
             shutil.copy(base_arima, C.PROCESSED_DIR)
-    seeds = (C.SEEDS_FINAL[0],) if args.smoke else C.SEEDS_FINAL
+    seeds = tuple(args.seeds) if args.seeds else ((C.SEEDS_FINAL[0],) if args.smoke else C.SEEDS_FINAL)
     epocas = 1 if args.smoke else C.TREINO["epocas"]
 
     from src.comparar import fig_curvas, fig_previsoes
@@ -79,12 +80,20 @@ def main():
     for modelo in MODELOS:
         cid, patch, d, dr = melhor_config(sel, modelo)
         print(f"\n=== {modelo}: melhor config {cid} ===")
+        if not final.empty:  # a melhor config mudou: descarta resultados de outras configs
+            velho = (final.modelo == modelo) & (final.config != cid)
+            if velho.any():
+                print(f"[{modelo}] config anterior {sorted(final[velho].config.unique())}: refazendo todas as seeds")
+                final = final[~velho]
         for seed in seeds:
-            arq_pred = C.PROCESSED_DIR / f"pred_{C.PREFIX}{modelo}.npy"  # seed 42: figuras
+            arq_pred = C.PROCESSED_DIR / f"pred_{C.PREFIX}{modelo}_s{seed}.npy"  # todas as seeds
+            arq_pred42 = C.PROCESSED_DIR / f"pred_{C.PREFIX}{modelo}.npy"  # seed 42: figuras
             arq_log = C.TAB_DIR / f"{C.PREFIX}{modelo}_log.csv"
             feito = (not final.empty and ((final.modelo == modelo) & (final.seed == seed)).any())
-            if feito and (seed != C.SEED or (arq_pred.exists() and arq_log.exists())):
-                print(f"[{modelo}] seed {seed}: já no CSV, pulando")
+            if feito and seed == C.SEED and not arq_pred.exists() and arq_pred42.exists():
+                shutil.copy(arq_pred42, arq_pred)  # previsões da seed 42 salvas pela versão anterior
+            if feito and arq_pred.exists() and (seed != C.SEED or arq_log.exists()):
+                print(f"[{modelo}] seed {seed}: já no CSV com previsões, pulando")
                 continue
             r = treinar(mat, f"{modelo}:s{seed}", epocas, modelo, patch, d, dr, seed=seed)
             res = prever_teste(r["model"], mat, r["mu"], r["sd"])
@@ -93,8 +102,9 @@ def main():
             tab.insert(2, "seed", seed)
             tab["melhor_epoca"] = r["melhor_ep"]
             tab["segundos_treino"] = round(r["segundos"], 1)
+            np.save(arq_pred, np.stack([p for _, p in res]))
             if seed == C.SEED:
-                np.save(arq_pred, np.stack([p for _, p in res]))
+                np.save(arq_pred42, np.stack([p for _, p in res]))
                 pd.DataFrame(r["log"]).to_csv(arq_log, index=False)
             if not final.empty:
                 final = final[~((final.modelo == modelo) & (final.seed == seed))]
