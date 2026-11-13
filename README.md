@@ -220,6 +220,27 @@ Saídas: `results/tables/etth1_resultados.csv` (uma linha por horizonte: MSE, MA
 device e diferença abs./relativa vs. artigo) e `etth1_h{H}_log.csv` (curvas por época). Usa GPU se houver, senão CPU
 (~13 min/época em CPU de 8 threads; execuções com `--epocas`/`--amostra` são smoke e não entram na tabela de resultados).
 
+### Resultado da replicação (Colab, Tesla T4, seed 2021, 1 execução)
+
+| Horizonte | MSE (nosso) | MSE (artigo) | dif. rel. | MAE (nosso) | MAE (artigo) | dif. rel. | melhor época / rodadas | tempo |
+|---|---|---|---|---|---|---|---|---|
+| 96 | 0,3609 | 0,358 | +0,80% | 0,3904 | 0,390 | +0,11% | 12 / 32 | 11,3 min |
+| 192 | 0,4028 | 0,396 | +1,71% | 0,4157 | 0,414 | +0,41% | 8 / 28 | 9,6 min |
+| 336 | 0,3957 | 0,391 | +1,19% | 0,4232 | 0,420 | +0,76% | 5 / 25 | 8,6 min |
+| 720 | 0,4361 | 0,430 | +1,41% | 0,4612 | 0,457 | +0,92% | 4 / 24 | 8,0 min |
+
+Fonte: `results/tables/etth1_resultados.csv` (conferido contra `etth1_artigo.csv`: valores do artigo, diferenças
+relativas, melhor época e loss de validação batem com os logs `etth1_h*_log.csv`).
+
+- Nosso resultado é **ligeiramente pior que o do artigo em todos os horizontes** (MSE +0,8% a +1,7%; MAE +0,1% a +0,9%),
+  sempre dentro de ~2%. Com uma única seed, não dá para dizer se a diferença está acima da variação entre seeds.
+- **A melhor época cai com o horizonte:** 12, 8, 5 e 4 (96, 192, 336, 720). Nos horizontes longos a loss de validação
+  atinge o mínimo cedo e sobe depois (figura abaixo); o early stopping (paciência 20) parou após 24 a 32 épocas.
+  Hipótese, não testada: a cabeça linear cresce com o horizonte, e o modelo passa a sobreajustar mais cedo.
+  A loss de validação não é comparável entre horizontes (a escala cresce com o horizonte).
+
+![curvas de validação](results/figures/etth1_curvas.png)
+
 ### Rodar no Google Colab (GPU)
 1. No GitHub, crie um *fine-grained token* com acesso de leitura (*Contents: read*) a este repositório.
 2. No Colab, abra `notebooks/replicacao_colab.ipynb` (File > Upload ou via GitHub).
