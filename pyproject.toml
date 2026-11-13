@@ -11,6 +11,7 @@ dependencies = [
     "matplotlib>=3.11.2",
     "numpy>=2.5.4",
     "pandas>=3.1.1",
+    "statsforecast>=2.0.1",
     "torch>=2.15.0",
     "tqdm>=4.70.1",
     "yacs>=0.1.8",
