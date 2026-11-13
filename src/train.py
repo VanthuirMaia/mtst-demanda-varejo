@@ -1,12 +1,13 @@
-"""Treino e avaliação do MTST global (um modelo para todas as séries, channel-independent).
+"""Treino e avaliação de modelos globais (MTST ou PatchTST; um modelo para todas as séries,
+channel-independent). Dataset: C.DATASET (m5 por padrão; DATASET=store_item é o preliminar).
 
-Dataset: C.DATASET (m5 por padrão; DATASET=store_item para o experimento preliminar).
-Exemplos:
-  uv run python -m src.train
-  uv run python -m src.train --epocas 1 --amostra 0.1   # teste rápido
-  DATASET=store_item uv run python -m src.train
+A seleção de parâmetros está em src/selecao.py e o treino final com várias seeds em src/final.py;
+este módulo tem as funções de treino e um CLI para uma execução avulsa:
+  uv run python -m src.train --modelo mtst_global
+  uv run python -m src.train --modelo patchtst_global --epocas 1 --amostra 0.1   # teste rápido
 """
 import argparse
+import copy
 import os
 import random
 import sys
@@ -21,7 +22,8 @@ from tqdm import tqdm
 from src import config as C
 from src.data import get_test_origins, load_data, make_test_window, make_windows, selecionar_series
 from src.metrics import METRICAS, evaluate
-from src.mtst_oficial.MTST import Model
+from src.mtst_oficial.MTST import Model as MTSTModel
+from src.patchtst_oficial.PatchTST import Model as PatchTSTModel
 
 DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -33,8 +35,10 @@ def fixar_seed(seed=C.SEED):
     torch.cuda.manual_seed_all(seed)
 
 
-def criar_modelo():
-    return Model(SimpleNamespace(**C.MTST)).to(DEV)
+def criar_modelo(modelo, patch, d_model, dropout):
+    """modelo: 'mtst_global' | 'patchtst_global' (config em C.config_modelo)."""
+    cfg = SimpleNamespace(**C.config_modelo(modelo, patch, d_model, dropout))
+    return (MTSTModel if modelo == "mtst_global" else PatchTSTModel)(cfg).to(DEV)
 
 
 def contar_parametros(model):
@@ -42,8 +46,11 @@ def contar_parametros(model):
 
 
 def prever(model, x):
-    """x: (B, lookback) -> (B, horizon). O modelo oficial usa [B, L, canais] com 1 canal."""
-    saida = model(x.to(DEV).unsqueeze(-1))[0]  # (B, horizon, 1)
+    """x: (B, lookback) -> (B, horizon). Os modelos usam [B, L, canais] com 1 canal; o MTST
+    devolve uma tupla, o PatchTST um tensor."""
+    saida = model(x.to(DEV).unsqueeze(-1))
+    if isinstance(saida, tuple):
+        saida = saida[0]
     return saida.squeeze(-1)
 
 
@@ -70,41 +77,43 @@ def stats_treino(mat):
     return tr.mean().to_numpy(dtype="float32"), tr.std().to_numpy(dtype="float32")
 
 
-def treinar(mat, tag, epocas, verbose=True):
+def treinar(mat, tag, epocas, modelo, patch, d_model, dropout, seed=C.SEED, verbose=True):
     """Treina em `mat` (DataFrame T x séries) padronizado por série (stats do treino).
-    Loss de treino e validação na escala normalizada. Devolve (modelo, mu, sd)."""
+    Loss de treino e validação na escala normalizada; guarda o melhor estado pela validação
+    (sem early stopping). -> dict(model, mu, sd, log, melhor_ep, melhor_val, segundos, n_params)."""
     T = C.TREINO
+    t0_total = time.time()
+    fixar_seed(seed)
     mu, sd = stats_treino(mat)
     mat = (mat - mu) / sd
     Xtr, ytr = make_windows(mat, mat.index[0], C.TRAIN_END, stride=T["stride_treino"])
     Xva, yva = make_windows(mat, pd.Timestamp(C.TRAIN_END) + pd.Timedelta(days=1), C.VAL_END,
                             stride=T["stride_val"])
-    Xtr, ytr, Xva, yva = (torch.from_numpy(a) for a in (Xtr, ytr, Xva, yva))
+    Xtr, ytr, Xva, yva = (torch.from_numpy(a).to(DEV) for a in (Xtr, ytr, Xva, yva))
     print(f"[{tag}] amostras treino={len(Xtr)} val={len(Xva)} séries={mat.shape[1]}")
 
-    model = criar_modelo()
-    print(f"[{tag}] parâmetros: {contar_parametros(model):,}")
+    model = criar_modelo(modelo, patch, d_model, dropout)
+    n_params = contar_parametros(model)
+    print(f"[{tag}] parâmetros: {n_params:,} | device {DEV}")
     opt = torch.optim.Adam(model.parameters(), lr=T["max_lr"])
     passos_ep = int(np.ceil(len(Xtr) / T["batch"]))
-    # OneCycleLR (como o lradj 'TST' do oficial); um passo por batch, ciclo sobre o máximo de épocas
+    # OneCycleLR (como o lradj 'TST' do oficial); um passo por batch, ciclo sobre as épocas fixas
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=T["max_lr"], pct_start=T["pct_start"],
                                                 steps_per_epoch=passos_ep, epochs=epocas)
-    gen = torch.Generator().manual_seed(C.SEED)
+    gen = torch.Generator().manual_seed(seed)
 
-    C.CKPT_DIR.mkdir(parents=True, exist_ok=True)
-    ckpt = C.CKPT_DIR / f"{C.PREFIX}mtst_{tag}.pt"
-    melhor, melhor_ep, log = float("inf"), 0, []
-
+    melhor, melhor_ep, estado, log = float("inf"), 0, None, []
     for ep in range(1, epocas + 1):
         t0 = time.time()
         model.train()
-        perm = torch.randperm(len(Xtr), generator=gen)
+        perm = torch.randperm(len(Xtr), generator=gen).to(DEV)
         soma = 0.0
-        barra = tqdm(range(0, len(perm), T["batch"]), desc=f"época {ep}", leave=False, disable=not (verbose and sys.stderr.isatty()), mininterval=60)
+        barra = tqdm(range(0, len(perm), T["batch"]), desc=f"época {ep}", leave=False,
+                     disable=not (verbose and sys.stderr.isatty()), mininterval=60)
         for i in barra:
             idx = perm[i:i + T["batch"]]
             opt.zero_grad()
-            loss = ((prever(model, Xtr[idx]) - ytr[idx].to(DEV)) ** 2).mean()
+            loss = ((prever(model, Xtr[idx]) - ytr[idx]) ** 2).mean()
             loss.backward()
             opt.step()
             sched.step()
@@ -113,18 +122,17 @@ def treinar(mat, tag, epocas, verbose=True):
         l_va = loss_val(model, Xva, yva)
         dt = time.time() - t0
         marca = ""
-        if l_va < melhor:  # só guarda o melhor checkpoint (sem early stopping)
+        if l_va < melhor:
             melhor, melhor_ep, marca = l_va, ep, " *"
-            torch.save(model.state_dict(), ckpt)
+            estado = copy.deepcopy(model.state_dict())
         print(f"[{tag}] época {ep:02d} | treino {l_tr:.3f} | val {l_va:.3f} | lr {sched.get_last_lr()[0]:.2e} | {dt:.0f}s{marca}")
         log.append({"epoca": ep, "loss_treino": l_tr, "loss_val": l_va,
                     "lr": sched.get_last_lr()[0], "segundos": dt})
 
-    C.TAB_DIR.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(log).to_csv(C.TAB_DIR / f"{C.PREFIX}mtst_{tag}_log.csv", index=False)
     print(f"[{tag}] melhor época: {melhor_ep} (val {melhor:.3f})")
-    model.load_state_dict(torch.load(ckpt, map_location=DEV))
-    return model, mu, sd
+    model.load_state_dict(estado)
+    return dict(model=model, mu=mu, sd=sd, log=log, melhor_ep=melhor_ep, melhor_val=melhor,
+                segundos=time.time() - t0_total, n_params=n_params)
 
 
 def prever_teste(model, mat, mu, sd):
@@ -158,30 +166,24 @@ def y_treino(mat):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--modelo", choices=["mtst_global", "patchtst_global"], default="mtst_global")
     ap.add_argument("--epocas", type=int, default=C.TREINO["epocas"])
     ap.add_argument("--amostra", type=float, default=1.0, help="fração de séries (teste rápido)")
     args = ap.parse_args()
 
     t_ini = time.time()
     torch.set_num_threads(os.cpu_count())
-    fixar_seed()
     mat = load_data()
     C.imprimir_splits()
-    print(f"device: {DEV}")
-
     sub = selecionar_series(mat, frac=args.amostra)
-    model, mu, sd = treinar(sub, "global", args.epocas)
-    res, yt, nome = prever_teste(model, sub, mu, sd), y_treino(sub), f"{C.PREFIX}mtst_global"
-
-    # previsões (janelas, séries, horizonte) para as figuras de comparação
-    C.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    np.save(C.PROCESSED_DIR / f"pred_{nome}.npy", np.stack([r[1] for r in res]))
-
+    patch = (7, 14, 28) if args.modelo == "mtst_global" else 14
+    r = treinar(sub, args.modelo, args.epocas, args.modelo, patch, 64, 0.2)
+    res, yt = prever_teste(r["model"], sub, r["mu"], r["sd"]), y_treino(sub)
+    nome = f"{C.PREFIX}{args.modelo}_avulso"
+    C.TAB_DIR.mkdir(parents=True, exist_ok=True)
     tab = tabela(nome, res, yt)
-    saida = C.TAB_DIR / f"{nome}.csv"
-    tab.to_csv(saida, index=False)
+    tab.to_csv(C.TAB_DIR / f"{nome}.csv", index=False)
     print(tab.to_string(index=False, float_format=lambda x: f"{x:.3f}"))
-    print("salvo em", saida)
     print(f"tempo total: {(time.time() - t_ini) / 60:.1f} min")
 
 
