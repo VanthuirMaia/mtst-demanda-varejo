@@ -138,16 +138,57 @@ cabeçalho de atribuição; só mudam os imports (reaproveita `PatchTST_layers` 
 
 ## Resultados (M5, média das 4 janelas de teste)
 
-Baselines (`results/tables/m5_baselines.csv`; MTST e PatchTST ainda não treinados):
+Executado no Colab (GPU), com seleção e treino final conforme a seção anterior. Transformers: média ± desvio
+amostral entre as seeds 42, 43 e 44 (cada seed já é a média das 4 janelas); baselines são determinísticos.
+Em negrito, o melhor de cada coluna. Tabela completa: `results/tables/m5_comparacao.csv`
+(por seed: `m5_final.csv`; seleção: `m5_selecao.csv`).
 
 | modelo | MAE | RMSE | sMAPE | MASE | MSE norm. | MAE norm. |
 |---|---|---|---|---|---|---|
 | naive semanal | 95,77 | 122,77 | 21,55 | 1,334 | 1,520 | 0,834 |
 | naive anual | 112,59 | 139,72 | 25,83 | 1,641 | 3,086 | 1,009 |
-| **ARIMA por série** | **85,71** | **111,00** | **19,18** | **1,202** | **1,283** | **0,755** |
+| ARIMA por série | 85,71 | 111,00 | 19,18 | 1,202 | 1,283 | 0,755 |
+| PatchTST global | **69,44 ± 0,39** | **91,27 ± 0,51** | **16,12 ± 0,07** | **1,029 ± 0,004** | **1,008 ± 0,010** | **0,640 ± 0,002** |
+| MTST global | 71,75 ± 0,51 | 94,35 ± 0,34 | 16,22 ± 0,04 | 1,047 ± 0,006 | 1,058 ± 0,016 | 0,649 ± 0,003 |
 
-O ARIMA (AutoARIMA, sazonalidade 7) é o melhor baseline em todas as métricas; tempo de ajuste e
-previsão: ~34 min nas 4 janelas (70 séries, CPU 8 threads, ~8,5 min por janela).
+**Configuração escolhida** (menor MSE de validação normalizado na seleção, 20 configs):
+
+| modelo | config | val. MSE norm. | parâmetros | melhor época por seed (42/43/44) |
+|---|---|---|---|---|
+| PatchTST | patch 7, d_model 64, dropout 0,4 | 0,6496 | 370.394 | 7 / 9 / 9 |
+| MTST | patches (7,28,91), d_model 32, dropout 0,4 | 0,6656 | 1.106.956 | 2 / 3 / 4 |
+
+**Testes de Wilcoxon pareados por série** (`src/testes.py`, `results/tables/m5_testes.csv`): 70 séries, MAE por
+série médio nas 4 janelas, previsões da **seed 42** (só ela tem previsões salvas; `final.py` guarda apenas a
+seed 42). p-valor bilateral; p (Holm) corrige para as 3 comparações.
+
+| comparação (A x B) | W | p-valor | p (Holm) | séries vencidas por A / B | MAE médio A / B |
+|---|---|---|---|---|---|
+| PatchTST x MTST | 688 | 0,0012 | 0,0012 | 46 / 24 | 69,50 / 71,75 |
+| PatchTST x ARIMA | 131 | < 0,001 | < 0,001 | 66 / 4 | 69,50 / 85,71 |
+| MTST x ARIMA | 190 | < 0,001 | < 0,001 | 64 / 6 | 71,75 / 85,71 |
+
+**Leitura**
+- **O ganho do MTST sobre o PatchTST do artigo não se repete aqui:** o PatchTST fica melhor em todas as métricas
+  (MAE 69,4 vs 71,7; MASE 1,029 vs 1,047) e vence em 46 das 70 séries (Wilcoxon p = 0,0012). A diferença é
+  pequena (~3% no MAE), mas consistente: as 3 seeds do PatchTST (MAE 69,0 a 69,8) ficam todas abaixo das 3 do
+  MTST (71,2 a 72,3). Em sMAPE e MAE normalizado a diferença é mínima (16,12 vs 16,22; 0,640 vs 0,649).
+- **Os dois Transformers batem o ARIMA por folga:** MAE 16% a 19% menor (71,7 e 69,4 vs 85,7) e MASE ~1,03 a 1,05 vs 1,20;
+  vencem em 64 a 66 das 70 séries (p < 0,001). Mas o ARIMA é reajustado a cada janela e os Transformers são
+  treinados uma vez (ver Desenho experimental), então a comparação não é simétrica em favor dos Transformers.
+- **MTST sobreajusta cedo:** a melhor época fica em 2 a 4 de 15 (PatchTST: 7 a 9), e a loss de validação do MTST
+  fica estável ou sobe enquanto a de treino cai (`results/figures/m5_curvas_treino.png`). O MTST tem 3 vezes
+  mais parâmetros que o PatchTST escolhido; é uma hipótese (não testada) que o excesso de capacidade, e não a
+  ideia multirresolução, explique a perda.
+- **Seleção ruidosa:** as 20 configs ficam numa faixa estreita de MSE de validação (0,650 a 0,697), com uma só
+  seed na seleção; a escolha de cada modelo é pouco robusta. Dropout 0,4 (borda da grade) foi o escolhido nos dois
+  modelos, e uma grade com mais regularização poderia mudar o ranking (não testado).
+- **Limites:** uma divisão temporal (4 janelas de 90 dias contíguas, de dependência forte entre si), 70 séries
+  agregadas por loja x departamento e 3 seeds. Os testes de Wilcoxon tratam as séries como independentes, o que não
+  vale na prática (séries da mesma loja são correlacionadas); os p-valores são indicativos.
+
+Figuras: `results/figures/m5_previsoes_exemplo.png` (janela 1, 4 séries de escalas diferentes) e
+`m5_curvas_treino.png` (melhor config, seed 42).
 
 ## Como rodar
 
@@ -158,6 +199,7 @@ uv run python -m src.eda         # figuras m5_*, resumo e comparação com o Sto
 uv run python -m src.baselines   # naive + ARIMA (~34 min); --sem-arima para só os naive
 uv run python -m src.selecao     # grade de parâmetros (retomável; --smoke para teste)
 uv run python -m src.final       # treino final, teste, m5_comparacao.csv e figuras
+uv run python -m src.testes      # Wilcoxon pareado por série -> m5_testes.csv
 uv run python -m src.train --modelo mtst_global   # execução avulsa (--epocas 1 --amostra 0.1)
 # Store Item (preliminar): DATASET=store_item uv run python -m src.<modulo>
 ```
@@ -173,6 +215,7 @@ src/metrics.py   mae, rmse, smape, mase, mse_norm, mae_norm
 src/baselines.py naive sazonal e ARIMA
 src/selecao.py   seleção de parâmetros em grade
 src/final.py     treino final (3 seeds), teste e comparação
+src/testes.py    Wilcoxon pareado por série
 src/train.py     treino e avaliação do MTST global
 src/comparar.py  figuras de comparação
 src/mtst_oficial/, src/patchtst_oficial/  modelos oficiais vendorizados
@@ -186,8 +229,11 @@ results/         figures/ e tables/ (prefixo m5_ = M5); store_item/ = experiment
 - [x] Config dataset-agnóstica, dados M5, métricas normalizadas, EDA
 - [x] Baselines no M5 (naive e ARIMA)
 - [x] PatchTST oficial vendorizado
-- [x] Seleção de parâmetros (`selecao.py`), treino final (`final.py`) e notebook Colab prontos; smoke test em CPU OK
-- [ ] Rodar seleção e treino final no Colab; analisar a comparação
+- [x] Seleção de parâmetros (`selecao.py`), treino final (`final.py`) e notebook Colab
+- [x] Seleção (20 configs) e treino final (3 seeds) rodados no Colab; `m5_comparacao.csv` e figuras
+- [x] Testes de Wilcoxon pareados por série (`testes.py`, seed 42)
+- [ ] Próximos (opcionais): testes com as 3 seeds (exige salvar as previsões das seeds 43 e 44), grade com
+  mais regularização, redação do relatório
 
 ## Replicação (ETTh1)
 
