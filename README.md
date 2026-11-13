@@ -1,52 +1,71 @@
-# MTST em previsão de demanda de varejo: modelo global vs. local
+# MTST em previsão de demanda de varejo (M5)
 
 Projeto da disciplina Previsão de Séries Temporais (mestrado).
 
-## Ideia central
+## Pergunta central
 
-**Problema.** Prever 90 dias de vendas diárias de 500 séries (10 lojas x 50 itens) do
-Kaggle *Store Item Demand Forecasting Challenge*. As séries têm sazonalidade semanal
-forte, sazonalidade anual e tendência.
+**O ganho do MTST sobre o PatchTST, mostrado nos benchmarks do artigo, se mantém em previsão de
+demanda de varejo?**
 
-**Por que MTST.** O *Multi-resolution Time-Series Transformer* (Zhang et al., AISTATS 2024)
-divide a série em patches de **vários tamanhos**, cada tamanho em um ramo paralelo do
-Transformer. Patches pequenos captam a sazonalidade semanal; médios, a mensal; grandes,
-a anual, tudo ao mesmo tempo. Usa também *positional encoding relativo*, que lida melhor
-com padrões periódicos de períodos diferentes do que o encoding absoluto.
+O *Multi-resolution Time-Series Transformer* (Zhang et al., AISTATS 2024) divide a série em
+patches de vários tamanhos (um ramo do Transformer por tamanho) e usa *positional encoding*
+relativo. O PatchTST usa um único tamanho de patch.
 
-**Pergunta de pesquisa.** Em demanda de varejo, vale mais treinar **um modelo global**
-(uma rede para as 500 séries, channel-independent) ou **modelos locais** (um por série,
-ou por loja/item)? O global compartilha padrões e tem mais dados; o local se adapta a
-cada série, mas tem poucas amostras.
+- **Parte 1 – Replicação (ETTh1):** reproduz o experimento do artigo para validar a nossa
+  configuração do MTST (seção *Replicação*; roda no Colab).
+- **Parte 2 – Aplicação (M5):** MTST e PatchTST **globais** (um modelo para todas as séries,
+  channel-independent) no M5, com **naive sazonal** e **ARIMA por série** como referências clássicas.
+- **Store Item Demand Forecasting:** *experimento preliminar* (500 séries sintéticas, 2013-2017),
+  fora do fluxo principal. O código continua executável com `DATASET=store_item`; resultados
+  preliminares em `results/` sem prefixo `m5_`.
 
-## Dataset
+## Dataset de aplicação: M5 (Walmart)
 
-[Store Item Demand Forecasting Challenge](https://www.kaggle.com/competitions/demand-forecasting-kernels-only/data)
-(Kaggle). Colunas: `date, store, item, sales`. 10 lojas x 50 itens, diário,
-2013-01-01 a 2017-12-31 (1826 dias).
+`sales_train_evaluation.csv` e `calendar.csv` (Kaggle, *M5 Forecasting - Accuracy*) em
+`data/raw/m5/` (não versionados). Vendas agregadas por **loja x departamento**: **70 séries**
+(10 lojas x 7 departamentos), colunas `"{store}_{dept}"`, 1941 dias, 2011-01-29 a 2016-05-22, sem NaN.
 
-**Como obter:** baixar `train.csv` no Kaggle e colocar em `data/raw/train.csv`
-(não é versionado).
+**Características do dataset (não tratadas):**
+- **Natal:** nos dias 25/12 de 2011 a 2015 a venda total cai a ~0 (11 a 20 unidades, contra ~34 mil
+  de média): lojas fechadas. Não há outros dias com total próximo de zero e nenhuma loja inteira
+  ficou zerada em outro dia. Esses dias ficam no treino e, no teste, o 25/12/2015 cai na janela 3.
+- Séries de escalas muito diferentes (média diária de 12 a 2.913 unidades) e raros zeros por
+  série (0,27% dos dias em média; máx. 1,08% em `WI_1_HOBBIES_2`).
+- Perfil mensal (figura) enviesado pelos anos parciais (2011 começa em 29/01; 2016 termina em 22/05).
+
+### M5 vs. Store Item (`results/tables/m5_vs_store_item_eda.csv`)
+
+| | M5 (loja x depto) | Store Item (loja x item) |
+|---|---|---|
+| Séries x dias | 70 x 1941 | 500 x 1826 |
+| Escala média diária (min / max) | 493 (12 / 2.913) | 52 (13 / 113) |
+| Razão max/min da escala | 244 | 8,9 |
+| CV médio (min / max) | 0,36 (0,21 / 0,80) | 0,29 (0,26 / 0,37) |
+| % de dias zero (média / máx.) | 0,27 / 1,08 | 0,00 / 0,05 |
+
+O Store Item é bem mais homogêneo (escalas e CV em faixas estreitas, praticamente sem zeros),
+coerente com dados sintéticos; o M5 (real) tem heterogeneidade de escala e de variabilidade bem
+maiores e eventos como o Natal.
 
 ## Desenho experimental
 
 | Item | Definição |
 |---|---|
-| Lookback | 364 dias (52 semanas) |
-| Horizonte | 90 dias |
-| Treino | até 2016-06-30 |
-| Validação | 2016-07-01 a 2016-12-31 |
-| Teste | 2017, 4 janelas de 90 dias sem sobreposição a partir de 2017-01-01 (origens: 01/01, 01/04, 30/06, 28/09) |
-| Métricas | MAE, RMSE, sMAPE, MASE (sazonalidade 7, escala no treino de cada série); média sobre as séries |
-| Baselines | naive sazonal semanal; naive sazonal anual (valor de 364 dias antes) |
+| Lookback / horizonte | 364 / 90 dias (os dois datasets) |
+| Splits (M5) | **calculados a partir das datas**: teste = últimos 360 dias em 4 janelas de 90; validação = 180 dias antes do teste; treino = o resto |
+| Treino | 2011-01-29 a 2014-11-29 (1401 dias) |
+| Validação | 2014-11-30 a 2015-05-28 (180 dias) |
+| Teste | 2015-05-29 a 2016-05-22; origens 05-29, 08-27, 11-25, 02-23 |
+| Métricas (escala original) | MAE, RMSE, sMAPE, MASE (sazonalidade 7, escala no treino); média sobre séries |
+| Métricas (normalizada) | MSE e MAE após padronizar cada série com média e desvio do treino (protocolo do artigo) |
+| Baselines | naive sazonal semanal e anual (364 d); AutoARIMA (statsforecast, sazonalidade 7) por série |
 
-Notas:
-- 4 x 90 = 360 dias, então a última janela termina em **2017-12-26**; os 5 últimos dias
-  do dataset não entram no teste.
-- Janelas de treino/validação: o horizonte previsto fica dentro do intervalo do split; o
-  lookback pode usar histórico anterior. Amostras channel-independent (uma por série e origem).
-- **Lookback = 364.** Os dados são diários, e 364 dias = 52 semanas: o modelo enxerga o mesmo dia da semana do ano anterior, o que torna justa a comparação com o baseline sazonal anual (mesma informação disponível). Além disso, 364 é divisível por 7, 14 e 28, então os patches da Fase 2 se alinham a semanas. O 336 do paper vem de datasets horários e não se aplica aqui.
-- Seed fixa: 42.
+- **ARIMA com origem móvel:** para cada janela, ajustado em todo o histórico anterior à origem
+  (treino + validação + janelas de teste anteriores), previsão de 90 dias clipada em >= 0.
+- Janelas de treino/validação: o horizonte fica dentro do intervalo do split; o lookback pode usar
+  histórico anterior. Amostras channel-independent. Seed 42.
+- **Lookback = 364:** 52 semanas, o mesmo dia da semana do ano anterior (justo vs. naive anual),
+  divisível por 7, 14 e 28. O 336 do artigo vem de dados horários.
 
 ## Implementação do MTST
 
@@ -70,8 +89,8 @@ arquivo tem cabeçalho com origem e alterações. Dependências extras: `yacs` e
 - **Treino (`src/train.py`):** cada série é padronizada com média e desvio do período de
   treino (como o pipeline oficial); loss e early stopping na escala normalizada. RevIN continua
   ligado. Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3, como o lradj `TST` do oficial),
-  batch 128, janelas de treino com stride 7. Épocas: ver v1 e v2 em Resultados (v2 atual: 15
-  épocas fixas, sem early stopping, melhor checkpoint pela validação). Na avaliação, as
+  batch 128, janelas de treino com stride 7. 15 épocas fixas, sem early stopping, melhor
+  checkpoint pela validação. Na avaliação, as
   previsões são desnormalizadas, truncadas em >= 0 e as métricas calculadas na escala original.
 - **Dupla normalização (observação):** as janelas passam por duas normalizações. A padronização
   por série (média e desvio do treino) é feita por nós e o RevIN, ligado no forward em treino e
@@ -80,83 +99,63 @@ arquivo tem cabeçalho com origem e alterações. Dependências extras: `yacs` e
   padronização na entrada do modelo; o efeito dela fica só na **loss**, onde iguala o peso das
   séries (a saída é desnormalizada pelo RevIN para a escala da série padronizada). Não foi
   testado o treino sem a padronização.
-- **Modos:** `--modo global` (500 séries), `--modo local --loja N`, `--modo local_todas`
-  (um modelo por loja, métricas sobre as 500 séries).
+- **Treino global:** `uv run python -m src.train` (todas as séries do dataset configurado).
 
-## Resultados (média das 4 janelas de teste)
+## PatchTST
 
-Duas configurações de treino (o resto da configuração é igual):
+Código oficial do PatchTST incluído no repositório do MTST (`models/PatchTST.py` e
+`layers/PatchTST_backbone.py`, commit `d52b6b5`), vendorizado em `src/patchtst_oficial/` com
+cabeçalho de atribuição; só mudam os imports (reaproveita `PatchTST_layers` e `RevIN` de
+`src/mtst_oficial/`, idênticos aos do MTST). Verificado por instanciação e forward; **ainda não treinado**.
 
-- **v1:** OneCycleLR planejado para 30 épocas + early stopping (paciência 4). **Problema do
-  agendador:** o pico do lr cai na época ~9 e o early stopping parou o treino por volta da
-  época 6 a 12, antes da fase de decaimento (nos locais, o melhor ponto foi a época 2, com o lr
-  ainda subindo).
-- **v2:** OneCycleLR com 15 épocas fixas (max_lr 5e-4, pct_start 0,3), sem early stopping; só
-  o melhor checkpoint pela loss de validação é guardado e usado no teste.
+## Resultados (M5, média das 4 janelas de teste)
 
-| modelo | MAE | RMSE | sMAPE | MASE |
-|---|---|---|---|---|
-| naive semanal | 11.421 | 14.011 | 21.589 | 1.397 |
-| **naive anual** | **8.564** | **10.759** | **17.115** | **1.073** |
-| MTST global v1 | 10.614 | 12.934 | 19.185 | 1.281 |
-| MTST global v2 | 10.595 | 12.943 | 19.131 | 1.279 |
-| MTST local v1 (1 por loja) | 9.886 | 12.229 | 18.015 | 1.197 |
-| MTST local v2 (1 por loja) | 10.627 | 13.022 | 19.300 | 1.285 |
+Baselines (`results/tables/m5_baselines.csv`; MTST e PatchTST ainda não treinados):
 
-Tabela por janela: `results/tables/comparacao.csv` (arquivos `*_v1.csv` = v1). Figuras:
-`results/figures/previsoes_exemplo.png` (v2) e `curvas_treino.png` (v2, com o lr).
+| modelo | MAE | RMSE | sMAPE | MASE | MSE norm. | MAE norm. |
+|---|---|---|---|---|---|---|
+| naive semanal | 95,77 | 122,77 | 21,55 | 1,334 | 1,520 | 0,834 |
+| naive anual | 112,59 | 139,72 | 25,83 | 1,641 | 3,086 | 1,009 |
+| **ARIMA por série** | **85,71** | **111,00** | **19,18** | **1,202** | **1,283** | **0,755** |
 
-- **Nenhuma configuração bate o naive sazonal anual** (MASE 1,07).
-- **Global:** v1 e v2 praticamente iguais (1,281 vs 1,279); o decaimento do lr não mudou o resultado.
-- **Local:** a v2 ficou **pior** que a v1 (1,285 vs 1,197), mesmo com o ciclo completo: treinar
-  mais (melhor época 10 a 15 contra 2) melhora a loss de treino, mas não a generalização. A v1,
-  que parou cedo, funcionou como uma regularização. Nas lojas 4 e 10 o melhor ponto da v2 foi a
-  época 1. Com a v2, global e local ficam equivalentes (1,279 vs 1,285).
-- **Melhor época (v1 / v2):** global 8 / 8; locais 2 / 10, 13, 15, 1, 15, 13, 15, 14, 13, 1 (lojas 1 a 10).
-- **Tempo de treino (v1 / v2):** global 44,9 / 57,5 min; 10 locais 23,2 / 66,7 min; total 68 / 124 min.
-- Gap treino x validação grande em todos (ex.: global 0,32 vs 0,86 na loss normalizada), sugerindo
-  overfitting ou deslocamento de nível entre treino e validação (hipótese, não verificada).
-  Uma seed, sem ajuste de hiperparâmetros.
+O ARIMA (AutoARIMA, sazonalidade 7) é o melhor baseline em todas as métricas; tempo de ajuste e
+previsão: ~34 min nas 4 janelas (70 séries, CPU 8 threads, ~8,5 min por janela).
 
 ## Como rodar
 
 ```bash
 uv sync
-uv run python -m src.eda         # figuras em results/figures/
-uv run python -m src.baselines   # results/tables/baselines.csv
-uv run python -m src.train --modo global   # ou: --modo local --loja 3 | --modo local_todas
-uv run python -m src.comparar    # comparacao.csv e figuras (após treinar global e local_todas)
-# teste rápido: --epocas 1 --amostra 0.1
+uv run python -m src.m5          # valida o M5 e lista os dias com venda ~0
+uv run python -m src.eda         # figuras m5_*, resumo e comparação com o Store Item
+uv run python -m src.baselines   # naive + ARIMA (~34 min); --sem-arima para só os naive
+uv run python -m src.train       # MTST global (--epocas 1 --amostra 0.1 para teste rápido)
+uv run python -m src.comparar    # tabela e figuras de comparação
+# Store Item (preliminar): DATASET=store_item uv run python -m src.<modulo>
 ```
 
 ## Estrutura
 
 ```
-data/raw/        train.csv (não versionado)
-data/processed/  derivados (não versionado)
-src/config.py    constantes e caminhos
-src/data.py      carga, origens de teste, janelas
-src/metrics.py   mae, rmse, smape, mase
-src/baselines.py naive semanal e anual
-src/train.py     treino e avaliação do MTST
+data/raw/m5/     sales_train_evaluation.csv, calendar.csv (não versionados); train.csv (Store Item)
+src/config.py    DATASET, splits, parâmetros
+src/m5.py        leitura e validação do M5 (70 séries)
+src/data.py      load_data(), origens de teste, janelas
+src/metrics.py   mae, rmse, smape, mase, mse_norm, mae_norm
+src/baselines.py naive sazonal e ARIMA
+src/train.py     treino e avaliação do MTST global
 src/comparar.py  tabela de comparação e figuras
-src/mtst_oficial/ modelo oficial vendorizado
+src/mtst_oficial/, src/patchtst_oficial/  modelos oficiais vendorizados
 src/eda.py       figuras e estatísticas
-results/         figures/ e tables/
+results/         figures/ e tables/ (prefixo m5_ = M5)
 ```
 
 ## Status
 
-- [x] Setup (uv, git), config, carga de dados, métricas
-- [x] Baselines naive sazonais
-- [x] EDA
-- [x] MTST oficial vendorizado, config diária e `train.py` (smoke test OK)
-- [x] Treino global
-- [x] Treino local (um modelo por loja)
-- [x] Comparação global vs. local nas 4 janelas de teste (v1 e v2)
-- [x] Correção do agendador (v2): o decaimento do lr não melhorou o resultado
-- [ ] Próximos: regularização (dropout, weight decay, modelo menor), corrigir o deslocamento de
-  nível, mais seeds; avaliar o MTST local com early stopping por loja
+- [x] Replicação ETTh1 preparada (Colab)
+- [x] Config dataset-agnóstica, dados M5, métricas normalizadas, EDA
+- [x] Baselines no M5 (naive e ARIMA)
+- [x] PatchTST oficial vendorizado
+- [ ] Treino MTST e PatchTST globais no M5; comparação final
 
 ## Replicação (ETTh1)
 
