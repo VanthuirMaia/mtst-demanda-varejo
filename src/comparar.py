@@ -1,4 +1,4 @@
-"""Junta baselines + modelos globais (MTST, PatchTST) do dataset C.DATASET e gera as figuras.
+"""Figuras de comparação (baselines + modelos globais) do dataset C.DATASET; a tabela está em src/final.py.
 Só entra o que existir em results/tables e data/processed (modelos ainda não treinados são ignorados)."""
 import matplotlib
 
@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 
 from src import config as C
-from src.baselines import seasonal_naive_yearly
 from src.data import get_test_origins, load_data
 
 P = C.PREFIX
@@ -20,22 +19,11 @@ plt.rcParams.update({"figure.dpi": 130, "axes.spines.top": False, "axes.spines.r
                      "axes.grid": True, "grid.alpha": 0.25, "axes.axisbelow": True})
 
 
-def tabela_comparacao():
-    partes = [pd.read_csv(C.TAB_DIR / f"{P}baselines.csv")]
-    for nome in ["mtst_global", "patchtst_global"]:
-        f = C.TAB_DIR / f"{P}{nome}.csv"
-        if f.exists():
-            partes.append(pd.read_csv(f))
-    tab = pd.concat(partes, ignore_index=True)
-    tab.to_csv(C.TAB_DIR / f"{P}comparacao.csv", index=False)
-    print(tab.to_string(index=False, float_format=lambda x: f"{x:.3f}"))
-
-
 def fig_previsoes(mat):
     vals = mat.to_numpy(dtype="float64")
     origem = get_test_origins()[0]
     o = mat.index.get_loc(origem)
-    prev = {"naive_anual": seasonal_naive_yearly(vals, o)}
+    prev = {}
     for nome in ["arima", "mtst_global", "patchtst_global"]:
         f = C.PROCESSED_DIR / f"pred_{P}{nome}.npy"
         if f.exists():
@@ -52,8 +40,7 @@ def fig_previsoes(mat):
         ax.plot(datas, vals[o - ctx:o + C.HORIZON, j], color=COR["real"], lw=1.6, label=NOME["real"])
         fut = mat.index[o:o + C.HORIZON]
         for nome, p in prev.items():
-            ax.plot(fut, p[j], color=COR[nome], lw=1.2, ls="--" if nome == "naive_anual" else "-",
-                    label=NOME[nome])
+            ax.plot(fut, p[j], color=COR[nome], lw=1.2, label=NOME[nome])
         ax.axvline(origem, color="#aaaaaa", lw=1)
         ax.set_title(f"{s} (média no treino: {escala[s]:.0f})", fontsize=10)
         ax.tick_params(axis="x", labelrotation=30)
@@ -82,7 +69,6 @@ def fig_curvas():
 
 
 if __name__ == "__main__":
-    tabela_comparacao()
     mat = load_data()
     fig_previsoes(mat)
     fig_curvas()
