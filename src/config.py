@@ -1,13 +1,22 @@
 """Configuração central do projeto."""
+import os
 from pathlib import Path
 
 import pandas as pd
+
+# --- Dataset de aplicação: "m5" (principal) | "store_item" (experimento preliminar) ---
+# Pode ser sobrescrito pela variável de ambiente DATASET (ex.: DATASET=store_item).
+DATASET = os.environ.get("DATASET", "m5")
+assert DATASET in ("m5", "store_item"), f"DATASET inválido: {DATASET}"
 
 # --- Caminhos ---
 RAIZ = Path(__file__).resolve().parent.parent
 RAW_DIR = RAIZ / "data" / "raw"
 PROCESSED_DIR = RAIZ / "data" / "processed"
-TRAIN_CSV = RAW_DIR / "train.csv"
+TRAIN_CSV = RAW_DIR / "train.csv"  # Store Item Demand Forecasting
+M5_DIR = RAW_DIR / "m5"
+M5_SALES_CSV = M5_DIR / "sales_train_evaluation.csv"
+M5_CALENDAR_CSV = M5_DIR / "calendar.csv"
 CKPT_DIR = RAIZ / "results" / "checkpoints"
 FIG_DIR = RAIZ / "results" / "figures"
 TAB_DIR = RAIZ / "results" / "tables"
@@ -16,22 +25,55 @@ LOG_DIR = RAIZ / "results" / "logs"
 # --- Reprodutibilidade ---
 SEED = 42
 
-# --- Janelas ---
+# --- Janelas (iguais nos dois datasets) ---
 # 364 dias = 52 semanas: o modelo vê o mesmo dia da semana do ano anterior (justo vs. naive
 # anual) e 364 é divisível por 7, 14 e 28 (patches alinhados a semanas). O 336 do paper é de
 # datasets horários e não se aplica a dados diários.
 LOOKBACK = 364
 HORIZON = 90
+N_TEST_WINDOWS = 4  # 4 x 90 = 360 dias de teste
+VAL_DAYS = 180
 
-# --- Splits (datas inclusivas) ---
-TRAIN_END = "2016-06-30"
-VAL_END = "2016-12-31"
+# --- Por dataset: prefixo dos arquivos de saída e datas ---
+# Prefixo dos arquivos em results/ ("" mantém os nomes do Store Item já versionados).
+PREFIX = {"m5": "m5_", "store_item": ""}[DATASET]
 
-# Teste: 2017 em 4 janelas de 90 dias, sem sobreposição, a partir de 2017-01-01.
-# 4 x 90 = 360 dias -> a última janela termina em 2017-12-26; os 5 últimos dias
-# de 2017 (27/12 a 31/12) não são avaliados.
-TEST_START = "2017-01-01"
-N_TEST_WINDOWS = 4
+# M5: d_1 = 2011-01-29 e 1941 dias (sales_train_evaluation) -> último dia 2016-06-19.
+M5_FIRST_DAY = "2011-01-29"
+M5_N_DAYS = 1941
+
+
+def calcular_splits_m5(first=M5_FIRST_DAY, n_days=M5_N_DAYS):
+    """Splits a partir das datas: teste = últimos N_TEST_WINDOWS*HORIZON dias; validação =
+    VAL_DAYS dias antes do teste; treino = o resto. -> dict com datas inclusivas."""
+    d0 = pd.Timestamp(first)
+    ultimo = d0 + pd.Timedelta(days=n_days - 1)
+    test_start = ultimo - pd.Timedelta(days=N_TEST_WINDOWS * HORIZON - 1)
+    val_end = test_start - pd.Timedelta(days=1)
+    val_start = val_end - pd.Timedelta(days=VAL_DAYS - 1)
+    train_end = val_start - pd.Timedelta(days=1)
+    f = lambda t: t.strftime("%Y-%m-%d")
+    return dict(first=f(d0), train_end=f(train_end), val_start=f(val_start), val_end=f(val_end),
+                test_start=f(test_start), last=f(ultimo))
+
+
+if DATASET == "m5":
+    SPLITS = calcular_splits_m5()
+    TRAIN_END, VAL_END, TEST_START = SPLITS["train_end"], SPLITS["val_end"], SPLITS["test_start"]
+else:
+    # Store Item: 2013-01-01 a 2017-12-31. Teste: 2017 em 4 janelas de 90 dias a partir de
+    # 2017-01-01 (a última termina em 2017-12-26; os 5 últimos dias não são avaliados).
+    TRAIN_END = "2016-06-30"
+    VAL_END = "2016-12-31"
+    TEST_START = "2017-01-01"
+
+
+def imprimir_splits():
+    ini = pd.Timestamp(TEST_START)
+    fim = ini + pd.Timedelta(days=N_TEST_WINDOWS * HORIZON - 1)
+    print(f"Splits ({DATASET}): treino até {TRAIN_END} | validação até {VAL_END} | "
+          f"teste {TEST_START} a {fim.date()} ({N_TEST_WINDOWS} x {HORIZON} dias)")
+
 
 # --- Métricas ---
 SEASONALITY = 7  # sazonalidade usada na escala do MASE
