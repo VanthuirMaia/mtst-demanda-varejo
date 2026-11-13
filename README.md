@@ -113,7 +113,7 @@ em `src/config.py` (`GRADE`), patches sem sobreposição (stride = patch), `d_ff
 | Modelo | patches | d_model | dropout | configs |
 |---|---|---|---|---|
 | MTST | (7,14,28) ou (7,28,91) | 32, 64 | 0,2; 0,4 | 8 |
-| PatchTST | 7, 14 ou 28 | 32, 64 | 0,2; 0,4 | 6 |
+| PatchTST | 7, 14 ou 28 | 32, 64 | 0,2; 0,4 | 12 |
 
 - **Critério:** MSE de validação na escala normalizada (melhor época de cada config).
 - **Protocolo (igual para todos):** 15 épocas fixas, Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3),
