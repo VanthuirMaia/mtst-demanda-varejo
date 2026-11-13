@@ -14,13 +14,15 @@ def _datas_calendario():
 def load_m5(verbose=True):
     """Devolve DataFrame (1941 dias x 70 séries) com vendas somadas por store_id x dept_id.
     Colunas '{store}_{dept}' (ex.: 'CA_1_HOBBIES_1'), ordenadas por loja e departamento."""
-    for f in (C.M5_SALES_CSV, C.M5_CALENDAR_CSV):
-        if not f.exists():
-            raise FileNotFoundError(
-                f"{f} não encontrado. Baixe sales_train_evaluation.csv e calendar.csv do M5 "
-                "(Kaggle: m5-forecasting-accuracy) e coloque em data/raw/m5/."
-            )
-    if CACHE.exists() and CACHE.stat().st_mtime >= C.M5_SALES_CSV.stat().st_mtime:
+    # Só com data/processed/m5_store_dept.csv (ex.: Colab) não precisa dos CSVs brutos.
+    raw_ok = C.M5_SALES_CSV.exists() and C.M5_CALENDAR_CSV.exists()
+    if not CACHE.exists() and not raw_ok:
+        raise FileNotFoundError(
+            f"Nem {CACHE} nem os CSVs brutos ({C.M5_SALES_CSV}, {C.M5_CALENDAR_CSV}) encontrados. "
+            "Baixe sales_train_evaluation.csv e calendar.csv do M5 (Kaggle: m5-forecasting-accuracy) "
+            "em data/raw/m5/, ou coloque m5_store_dept.csv em data/processed/."
+        )
+    if CACHE.exists() and (not raw_ok or CACHE.stat().st_mtime >= C.M5_SALES_CSV.stat().st_mtime):
         mat = pd.read_csv(CACHE, index_col=0, parse_dates=True)
     else:
         cab = pd.read_csv(C.M5_SALES_CSV, nrows=0).columns

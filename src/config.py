@@ -18,8 +18,9 @@ M5_DIR = RAW_DIR / "m5"
 M5_SALES_CSV = M5_DIR / "sales_train_evaluation.csv"
 M5_CALENDAR_CSV = M5_DIR / "calendar.csv"
 CKPT_DIR = RAIZ / "results" / "checkpoints"
+TAB_BASE = RAIZ / "results" / "tables"  # M5 (prefixo m5_) e ETTh1 (etth1_)
 FIG_DIR = RAIZ / "results" / "figures"
-TAB_DIR = RAIZ / "results" / "tables"
+TAB_DIR = TAB_BASE
 LOG_DIR = RAIZ / "results" / "logs"
 
 # --- Reprodutibilidade ---
@@ -37,6 +38,19 @@ VAL_DAYS = 180
 # --- Por dataset: prefixo dos arquivos de saída e datas ---
 # Prefixo dos arquivos em results/ ("" mantém os nomes do Store Item já versionados).
 PREFIX = {"m5": "m5_", "store_item": ""}[DATASET]
+if DATASET == "store_item":  # experimento preliminar: results/store_item/{tables,figures,logs}
+    TAB_DIR = RAIZ / "results" / "store_item" / "tables"
+    FIG_DIR = RAIZ / "results" / "store_item" / "figures"
+    LOG_DIR = RAIZ / "results" / "store_item" / "logs"
+
+
+def usar_smoke():
+    """Redireciona as saídas para results/smoke e data/processed/smoke (testes de 1 época)."""
+    global TAB_DIR, FIG_DIR, PROCESSED_DIR, CKPT_DIR
+    TAB_DIR = RAIZ / "results" / "smoke" / "tables"
+    FIG_DIR = RAIZ / "results" / "smoke" / "figures"
+    CKPT_DIR = RAIZ / "results" / "smoke" / "checkpoints"
+    PROCESSED_DIR = RAIZ / "data" / "processed" / "smoke"
 
 # M5: d_1 = 2011-01-29 e 1941 dias (sales_train_evaluation) -> último dia 2016-06-19.
 M5_FIRST_DAY = "2011-01-29"
@@ -82,23 +96,39 @@ SEASONALITY = 7  # sazonalidade usada na escala do MASE
 YEAR_LAG = 364  # 52 semanas: mesmo dia da semana um ano antes
 
 
-# --- MTST (argumentos esperados pelo construtor oficial, via SimpleNamespace) ---
-# 3 ramos com patch = stride = 7, 14, 28 dias -> 52, 26, 13 tokens (lookback 364).
-# O código oficial usa padding_patch='end' (acrescenta 1 patch); aqui None para ter
-# exatamente 364/patch tokens.
-MTST = dict(
-    seq_len=LOOKBACK, pred_len=HORIZON, enc_in=1,
-    e_layers=2, n_branches=3, n_heads=4, d_model=64, d_ff=128,
-    dropout=0.2, fc_dropout=0.2, head_dropout=0.0,
-    patch_len_ls="7, 14, 28", stride_ls="7, 14, 28", padding_patch=None,
-    revin=1, affine=0, subtract_last=0, rel_pe="rel_sin",
-    individual=0, decomposition=0, kernel_size=25,
-    store_attn=False, pre_norm=False, res_attn=False,
+# --- Modelos (argumentos esperados pelos construtores oficiais, via SimpleNamespace) ---
+# Patches sem sobreposição (stride = patch). Lookback 364: patch 7/14/28/91 -> 52/26/13/4 tokens.
+# padding_patch=None: exatamente 364/patch tokens (o oficial usa 'end', que acrescenta 1 patch).
+# d_ff = 2*d_model, 4 cabeças, 2 camadas, RevIN (e RPE no MTST) ligados.
+def config_modelo(modelo, patch, d_model, dropout):
+    """Namespace-dict do modelo. modelo: 'mtst_global' | 'patchtst_global'.
+    patch: tupla de patches (MTST) ou int (PatchTST)."""
+    base = dict(seq_len=LOOKBACK, pred_len=HORIZON, enc_in=1, e_layers=2, n_heads=4,
+                d_model=d_model, d_ff=2 * d_model, dropout=dropout, fc_dropout=dropout,
+                head_dropout=0.0, padding_patch=None, revin=1, affine=0, subtract_last=0,
+                individual=0, decomposition=0, kernel_size=25,
+                store_attn=False, pre_norm=False, res_attn=False)
+    if modelo == "mtst_global":
+        ls = ", ".join(str(p) for p in patch)
+        return dict(base, n_branches=len(patch), patch_len_ls=ls, stride_ls=ls, rel_pe="rel_sin")
+    return dict(base, patch_len=patch, stride=patch)
+
+
+# --- Grades da seleção de parâmetros (src/selecao.py): só treino e validação ---
+GRADE = dict(
+    mtst_global=dict(patch=[(7, 14, 28), (7, 28, 91)], d_model=[32, 64], dropout=[0.2, 0.4]),
+    patchtst_global=dict(patch=[7, 14, 28], d_model=[32, 64], dropout=[0.2, 0.4]),
 )
+SEEDS_FINAL = (42, 43, 44)
+
+# Compatibilidade (config padrão anterior do MTST)
+MTST = config_modelo("mtst_global", (7, 14, 28), 64, 0.2)
 
 # --- Treino ---
+# Adam + OneCycleLR, 15 épocas fixas, sem early stopping (melhor checkpoint pela validação).
+# Stride das janelas de treino: 1 no M5 (todas as origens); 7 no Store Item (preliminar).
 TREINO = dict(max_lr=5e-4, pct_start=0.3, batch=128, epocas=15,
-              stride_treino=7, stride_val=7)  # Adam + OneCycleLR; sem early stopping (v2)
+              stride_treino=1 if DATASET == "m5" else 7, stride_val=7)
 
 
 def to_ts(s):

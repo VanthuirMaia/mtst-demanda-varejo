@@ -94,7 +94,7 @@ def main():
                                         epochs=epocas, max_lr=T["learning_rate"])
 
     C.CKPT_DIR.mkdir(parents=True, exist_ok=True)
-    C.TAB_DIR.mkdir(parents=True, exist_ok=True)
+    C.TAB_BASE.mkdir(parents=True, exist_ok=True)
     ckpt = C.CKPT_DIR / f"{tag}.pt"
     melhor, melhor_ep, sem_melhora, log = float("inf"), 0, 0, []
 
@@ -128,22 +128,22 @@ def main():
         for g in opt.param_groups:  # adjust_learning_rate(epoch + 1)
             g["lr"] = lr_type3(T["learning_rate"], ep)
 
-    pd.DataFrame(log).to_csv(C.TAB_DIR / f"{tag}_log.csv", index=False)
+    pd.DataFrame(log).to_csv(C.TAB_BASE / f"{tag}_log.csv", index=False)
     model.load_state_dict(torch.load(ckpt, map_location=DEV))
     mse, mae, n = testar(model, te)
     print(f"[{tag}] TESTE (n={n} janelas): mse={mse:.4f} mae={mae:.4f}")
     linha = dict(horizonte=H, mse=mse, mae=mae, melhor_epoca=melhor_ep, epocas_rodadas=len(log),
                  melhor_val=melhor, tempo_min=(time.time() - t_ini) / 60, device=dev_nome)
     if tag.endswith("_smoke"):  # smoke não entra na tabela de resultados
-        pd.DataFrame([linha]).to_csv(C.TAB_DIR / f"{tag}.csv", index=False)
+        pd.DataFrame([linha]).to_csv(C.TAB_BASE / f"{tag}.csv", index=False)
     else:
         registrar(linha)
 
 
 def registrar(linha):
     """Atualiza results/tables/etth1_resultados.csv (uma linha por horizonte) com a comparação ao artigo."""
-    art = pd.read_csv(C.TAB_DIR / "etth1_artigo.csv").set_index("horizonte")
-    arq = C.TAB_DIR / "etth1_resultados.csv"
+    art = pd.read_csv(C.TAB_BASE / "etth1_artigo.csv").set_index("horizonte")
+    arq = C.TAB_BASE / "etth1_resultados.csv"
     tab = pd.read_csv(arq) if arq.exists() else pd.DataFrame()
     tab = pd.concat([tab[tab.horizonte != linha["horizonte"]] if len(tab) else tab,
                      pd.DataFrame([linha])], ignore_index=True).sort_values("horizonte")
