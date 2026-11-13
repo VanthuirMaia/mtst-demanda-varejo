@@ -112,8 +112,13 @@ em `src/config.py` (`GRADE`), patches sem sobreposição (stride = patch), `d_ff
 
 | Modelo | patches | d_model | dropout | configs |
 |---|---|---|---|---|
-| MTST | (7,14,28) ou (7,28,91) | 32, 64 | 0,2; 0,4 | 8 |
-| PatchTST | 7, 14 ou 28 | 32, 64 | 0,2; 0,4 | 12 |
+| MTST | (7,14,28) ou (7,28,91) | 32, 64 | 0,2; 0,4; 0,6 | 12 |
+| PatchTST | 7, 14 ou 28 | 32, 64 | 0,2; 0,4; 0,6 | 18 |
+
+**Extensão do dropout:** a grade original tinha dropout 0,2 e 0,4 (20 configs, já rodadas e em `m5_selecao.csv`).
+Como o 0,4, na borda da grade, venceu nos dois modelos, acrescentamos o 0,6 (+10 configs, 30 no total); a
+retomada pula as 20 já feitas. **Status: a extensão ainda não foi rodada no Colab;** a tabela de resultados abaixo
+é da grade original até a extensão ser executada.
 
 - **Critério:** MSE de validação na escala normalizada (melhor época de cada config).
 - **Protocolo (igual para todos):** 15 épocas fixas, Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3),
@@ -122,7 +127,10 @@ em `src/config.py` (`GRADE`), patches sem sobreposição (stride = patch), `d_ff
 - **Saída:** `results/tables/m5_selecao.csv` (modelo, config, `val_mse_norm`, melhor época, nº de
   parâmetros, tempo). **Retomável:** configs já no CSV são puladas.
 - **Treino final (`src/final.py`):** a melhor config de cada modelo é treinada com seeds 42, 43 e 44 e
-  avaliada nas 4 janelas de teste (previsão desnormalizada e clipada em >= 0). Saídas: `m5_final.csv`
+  avaliada nas 4 janelas de teste (previsão desnormalizada e clipada em >= 0). As previsões de **todas as seeds**
+  são salvas em `data/processed/pred_m5_{modelo}_s{seed}.npy` (a de seed 42 também em `pred_m5_{modelo}.npy`,
+  usada nas figuras). **Retomada:** se a melhor config mudou, as 3 seeds são refeitas; se não, só são retreinadas
+  as seeds sem previsões salvas. Saídas: `m5_final.csv`
   (por seed), `m5_comparacao.csv` (naive, ARIMA, PatchTST, MTST; média e desvio amostral entre seeds
   nos Transformers, colunas `<métrica>_dp`), `m5_previsoes_exemplo.png` e `m5_curvas_treino.png` (seed 42).
 - **Colab:** `notebooks/m5_colab.ipynb` (GPU; upload de `m5_store_dept.csv` e `pred_m5_arima.npy`).
@@ -159,8 +167,10 @@ Em negrito, o melhor de cada coluna. Tabela completa: `results/tables/m5_compara
 | MTST | patches (7,28,91), d_model 32, dropout 0,4 | 0,6656 | 1.106.956 | 2 / 3 / 4 |
 
 **Testes de Wilcoxon pareados por série** (`src/testes.py`, `results/tables/m5_testes.csv`): 70 séries, MAE por
-série médio nas 4 janelas, previsões da **seed 42** (só ela tem previsões salvas; `final.py` guarda apenas a
-seed 42). p-valor bilateral; p (Holm) corrige para as 3 comparações.
+série médio nas 4 janelas. Duas versões no CSV: **seed 42** e **média das seeds 42, 43 e 44** (para cada série, a
+média dos MAE das seeds; não é o MAE da média das previsões), esta última quando as previsões de todas as seeds
+existem. A tabela abaixo é da seed 42 (as previsões das seeds 43 e 44 ainda não foram salvas; entram na
+reexecução do `final.py`). p-valor bilateral; p (Holm) corrige para as 3 comparações de cada versão.
 
 | comparação (A x B) | W | p-valor | p (Holm) | séries vencidas por A / B | MAE médio A / B |
 |---|---|---|---|---|---|
@@ -199,7 +209,7 @@ uv run python -m src.eda         # figuras m5_*, resumo e comparação com o Sto
 uv run python -m src.baselines   # naive + ARIMA (~34 min); --sem-arima para só os naive
 uv run python -m src.selecao     # grade de parâmetros (retomável; --smoke para teste)
 uv run python -m src.final       # treino final, teste, m5_comparacao.csv e figuras
-uv run python -m src.testes      # Wilcoxon pareado por série -> m5_testes.csv
+uv run python -m src.testes      # Wilcoxon pareado por série (seed 42 e média das 3 seeds) -> m5_testes.csv
 uv run python -m src.train --modelo mtst_global   # execução avulsa (--epocas 1 --amostra 0.1)
 # Store Item (preliminar): DATASET=store_item uv run python -m src.<modulo>
 ```
@@ -232,8 +242,10 @@ results/         figures/ e tables/ (prefixo m5_ = M5); store_item/ = experiment
 - [x] Seleção de parâmetros (`selecao.py`), treino final (`final.py`) e notebook Colab
 - [x] Seleção (20 configs) e treino final (3 seeds) rodados no Colab; `m5_comparacao.csv` e figuras
 - [x] Testes de Wilcoxon pareados por série (`testes.py`, seed 42)
-- [ ] Próximos (opcionais): testes com as 3 seeds (exige salvar as previsões das seeds 43 e 44), grade com
-  mais regularização, redação do relatório
+- [x] Extensão da grade (dropout 0,6), `final.py` salvando previsões de todas as seeds e `testes.py` com a média
+  das 3 seeds: código e notebook prontos (smoke test em CPU OK)
+- [ ] Rodar a extensão no Colab (`selecao` -> `final` -> `testes`) e atualizar a tabela de resultados
+- [ ] Redação do relatório
 
 ## Replicação (ETTh1)
 
