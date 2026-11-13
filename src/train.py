@@ -1,10 +1,10 @@
-"""Treino e avaliação do MTST (global ou local).
+"""Treino e avaliação do MTST global (um modelo para todas as séries, channel-independent).
 
+Dataset: C.DATASET (m5 por padrão; DATASET=store_item para o experimento preliminar).
 Exemplos:
-  uv run python -m src.train --modo global
-  uv run python -m src.train --modo local --loja 3
-  uv run python -m src.train --modo local_todas
-  uv run python -m src.train --modo global --epocas 1 --amostra 0.1   # teste rápido
+  uv run python -m src.train
+  uv run python -m src.train --epocas 1 --amostra 0.1   # teste rápido
+  DATASET=store_item uv run python -m src.train
 """
 import argparse
 import os
@@ -20,7 +20,7 @@ from tqdm import tqdm
 
 from src import config as C
 from src.data import get_test_origins, load_data, make_test_window, make_windows, selecionar_series
-from src.metrics import evaluate
+from src.metrics import METRICAS, evaluate
 from src.mtst_oficial.MTST import Model
 
 DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -92,7 +92,7 @@ def treinar(mat, tag, epocas, verbose=True):
     gen = torch.Generator().manual_seed(C.SEED)
 
     C.CKPT_DIR.mkdir(parents=True, exist_ok=True)
-    ckpt = C.CKPT_DIR / f"mtst_{tag}.pt"
+    ckpt = C.CKPT_DIR / f"{C.PREFIX}mtst_{tag}.pt"
     melhor, melhor_ep, log = float("inf"), 0, []
 
     for ep in range(1, epocas + 1):
@@ -121,7 +121,7 @@ def treinar(mat, tag, epocas, verbose=True):
                     "lr": sched.get_last_lr()[0], "segundos": dt})
 
     C.TAB_DIR.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(log).to_csv(C.TAB_DIR / f"mtst_{tag}_log.csv", index=False)
+    pd.DataFrame(log).to_csv(C.TAB_DIR / f"{C.PREFIX}mtst_{tag}_log.csv", index=False)
     print(f"[{tag}] melhor época: {melhor_ep} (val {melhor:.3f})")
     model.load_state_dict(torch.load(ckpt, map_location=DEV))
     return model, mu, sd
@@ -145,7 +145,7 @@ def tabela(nome, resultados, y_train):
     for k, (origem, (y, p)) in enumerate(zip(get_test_origins(), resultados), start=1):
         linhas.append({"modelo": nome, "janela": k, "origem": origem.date(), **evaluate(y, p, y_train)})
     tab = pd.DataFrame(linhas)
-    med = tab[["mae", "rmse", "smape", "mase"]].mean().to_frame().T
+    med = tab[METRICAS].mean().to_frame().T
     med.insert(0, "modelo", nome)
     med.insert(1, "janela", "media")
     return pd.concat([tab, med], ignore_index=True)
@@ -158,39 +158,20 @@ def y_treino(mat):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--modo", choices=["global", "local", "local_todas"], required=True)
-    ap.add_argument("--loja", type=int, help="loja (1-10) para --modo local")
     ap.add_argument("--epocas", type=int, default=C.TREINO["epocas"])
     ap.add_argument("--amostra", type=float, default=1.0, help="fração de séries (teste rápido)")
     args = ap.parse_args()
-    if args.modo == "local" and args.loja is None:
-        ap.error("--modo local exige --loja N")
 
     t_ini = time.time()
     torch.set_num_threads(os.cpu_count())
     fixar_seed()
     mat = load_data()
+    C.imprimir_splits()
+    print(f"device: {DEV}")
 
-    if args.modo == "global":
-        sub = selecionar_series(mat, frac=args.amostra)
-        model, mu, sd = treinar(sub, "global", args.epocas)
-        res, yt, nome = prever_teste(model, sub, mu, sd), y_treino(sub), "mtst_global"
-    elif args.modo == "local":
-        sub = selecionar_series(mat, loja=args.loja, frac=args.amostra)
-        tag = f"local_loja{args.loja}"
-        model, mu, sd = treinar(sub, tag, args.epocas)
-        res, yt, nome = prever_teste(model, sub, mu, sd), y_treino(sub), f"mtst_{tag}"
-    else:  # um modelo por loja; métricas sobre todas as séries juntas
-        por_loja = []
-        for loja in range(1, 11):
-            fixar_seed()
-            sub = selecionar_series(mat, loja=loja, frac=args.amostra)
-            model, mu, sd = treinar(sub, f"local_loja{loja}", args.epocas)
-            por_loja.append((prever_teste(model, sub, mu, sd), y_treino(sub)))
-        res = [(np.concatenate([r[0][k][0] for r in por_loja]),
-                np.concatenate([r[0][k][1] for r in por_loja])) for k in range(C.N_TEST_WINDOWS)]
-        yt = np.concatenate([r[1] for r in por_loja])
-        nome = "mtst_local_todas"
+    sub = selecionar_series(mat, frac=args.amostra)
+    model, mu, sd = treinar(sub, "global", args.epocas)
+    res, yt, nome = prever_teste(model, sub, mu, sd), y_treino(sub), f"{C.PREFIX}mtst_global"
 
     # previsões (janelas, séries, horizonte) para as figuras de comparação
     C.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
