@@ -119,7 +119,7 @@ em `src/config.py` (`GRADE`), patches sem sobreposição (stride = patch), `d_ff
 
 **Extensão do dropout:** a grade original tinha dropout 0,2 e 0,4 (20 configs). Como o 0,4, na borda da grade, venceu nos dois modelos, acrescentamos o 0,6 (+10 configs, 30 no total), já rodadas no Colab. **Resultado da extensão:** o MTST passou a escolher dropout 0,6, que agora é a borda da grade (o ótimo pode estar além); o PatchTST manteve o dropout 0,4 (o 0,6 ficou em 2º, 0,6530 contra 0,6496).
 
-**Última extensão (só MTST):** acrescentamos dropout 0,8 à grade do MTST (+4 configs: 2 patches x 2 d_model), porque o ótimo dele (0,6) estava na borda. A grade do PatchTST não muda: o ótimo dele (0,4) já está no interior (0,2 e 0,6 o cercam), então estender não mudaria a escolha. Se o 0,8 vencer, `final.py` refaz o treino final do MTST com as 3 seeds; se não, nada é retreinado. O PatchTST não é retreinado em nenhum caso. Retomada: `selecao.py` pula as configs já em `m5_selecao.csv` e `final.py` pula as seeds já em `m5_final.csv` (com previsões salvas).
+**Última extensão (só MTST):** acrescentamos dropout 0,8 à grade do MTST (+4 configs: 2 patches x 2 d_model), porque o ótimo dele (0,6) estava na borda. A grade do PatchTST não muda: o ótimo dele (0,4) já está no interior (0,2 e 0,6 o cercam), então estender não mudaria a escolha. **Resultado:** o 0,8 não venceu (melhor config com 0,8: 0,6651, contra 0,6635 do 0,6; média das 4 configs 0,6674 contra 0,6654). O MSE de validação do MTST por dropout (melhor config) é 0,6689 (0,2), 0,6656 (0,4), **0,6635 (0,6)** e 0,6651 (0,8): o 0,6 fica no interior da grade, com vizinhos piores dos dois lados. Portanto a seleção e o treino final não mudaram e nada foi retreinado (nem o MTST nem o PatchTST). Retomada: `selecao.py` pula as configs já em `m5_selecao.csv` e `final.py` pula as seeds já em `m5_final.csv` (com previsões salvas).
 
 - **Critério:** MSE de validação na escala normalizada (melhor época de cada config).
 - **Protocolo (igual para todos):** 15 épocas fixas, Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3),
@@ -160,7 +160,7 @@ Em negrito, o melhor de cada coluna. Tabela completa: `results/tables/m5_compara
 | PatchTST global | **69,44 ± 0,39** | **91,27 ± 0,51** | 16,12 ± 0,07 | **1,029 ± 0,004** | **1,008 ± 0,010** | **0,640 ± 0,002** |
 | MTST global | 70,74 ± 0,46 | 93,46 ± 0,57 | **16,05 ± 0,06** | 1,038 ± 0,006 | 1,059 ± 0,020 | 0,644 ± 0,004 |
 
-**Configuração escolhida** (menor MSE de validação normalizado, 30 configs):
+**Configuração escolhida** (menor MSE de validação normalizado, 34 configs; o 0,6 do MTST está no interior da grade):
 
 | modelo | config | val. MSE norm. | parâmetros | melhor época por seed (42/43/44) |
 |---|---|---|---|---|
@@ -203,8 +203,8 @@ MAE das seeds; não é o MAE da média das previsões). p-valor bilateral; p (Ho
 - **MTST sobreajusta mais cedo:** com dropout 0,4 a melhor época ficava em 2 a 4 de 15; com 0,6 sobe para 4 a 7
   (PatchTST: 7 a 9). Mais regularização ajudou o MTST (val. 0,6656 -> 0,6635; MAE no teste 71,75 -> 70,74), compatível
   com a hipótese (não testada) de que o excesso de capacidade (3x os parâmetros do PatchTST), e não a ideia
-  multirresolução, explica a perda. Como 0,6 é a borda da grade, um dropout maior poderia fechar mais a diferença.
-- **Seleção ruidosa:** as 30 configs ficam numa faixa estreita de MSE de validação (0,650 a 0,697), com uma só seed
+  multirresolução, explica a perda. O 0,6 está no interior da grade (o 0,8 testado ficou pior na validação), então a diferença não deve fechar com mais dropout.
+- **Seleção ruidosa:** as 34 configs ficam numa faixa estreita de MSE de validação (0,650 a 0,697), com uma só seed
   na seleção; a escolha é pouco robusta (no MTST, as 3 melhores configs diferem em menos de 0,003).
 - **Limites:** uma divisão temporal (4 janelas de 90 dias contíguas, de dependência forte entre si), 70 séries
   agregadas por loja x departamento e 3 seeds. Os testes de Wilcoxon tratam as séries como independentes, o que não
@@ -253,12 +253,13 @@ results/         figures/ e tables/ (prefixo m5_ = M5); store_item/ = experiment
 - [x] Baselines no M5 (naive e ARIMA)
 - [x] PatchTST oficial vendorizado
 - [x] Seleção de parâmetros (`selecao.py`), treino final (`final.py`) e notebook Colab
-- [x] Seleção (20 configs) e treino final (3 seeds) rodados no Colab; `m5_comparacao.csv` e figuras
+- [x] Seleção (34 configs) e treino final (3 seeds) rodados no Colab; `m5_comparacao.csv` e figuras
 - [x] Testes de Wilcoxon pareados por série (`testes.py`)
 - [x] Extensão da grade (dropout 0,6), `final.py` salvando previsões de todas as seeds e `testes.py` com a média
   das 3 seeds: código e notebook prontos (smoke test em CPU OK)
 - [x] Extensão rodada no Colab (30 configs, 3 seeds com previsões salvas); resultados e testes atualizados (MTST escolheu dropout 0,6)
-- [x] Grade do MTST estendida com dropout 0,8 (código e notebook prontos; falta rodar no Colab)
+- [x] Grade do MTST estendida com dropout 0,8, rodada no Colab: não venceu; seleção, treino final e testes inalterados
+- [x] Todos os experimentos concluídos
 - [ ] Redação do relatório
 
 ## Replicação (ETTh1)
