@@ -115,10 +115,7 @@ em `src/config.py` (`GRADE`), patches sem sobreposição (stride = patch), `d_ff
 | MTST | (7,14,28) ou (7,28,91) | 32, 64 | 0,2; 0,4; 0,6 | 12 |
 | PatchTST | 7, 14 ou 28 | 32, 64 | 0,2; 0,4; 0,6 | 18 |
 
-**Extensão do dropout:** a grade original tinha dropout 0,2 e 0,4 (20 configs, já rodadas e em `m5_selecao.csv`).
-Como o 0,4, na borda da grade, venceu nos dois modelos, acrescentamos o 0,6 (+10 configs, 30 no total); a
-retomada pula as 20 já feitas. **Status: a extensão ainda não foi rodada no Colab;** a tabela de resultados abaixo
-é da grade original até a extensão ser executada.
+**Extensão do dropout:** a grade original tinha dropout 0,2 e 0,4 (20 configs). Como o 0,4, na borda da grade, venceu nos dois modelos, acrescentamos o 0,6 (+10 configs, 30 no total), já rodadas no Colab. **Resultado da extensão:** o MTST passou a escolher dropout 0,6, que agora é a borda da grade (o ótimo pode estar além); o PatchTST manteve o dropout 0,4 (o 0,6 ficou em 2º, 0,6530 contra 0,6496).
 
 - **Critério:** MSE de validação na escala normalizada (melhor época de cada config).
 - **Protocolo (igual para todos):** 15 épocas fixas, Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3),
@@ -156,46 +153,58 @@ Em negrito, o melhor de cada coluna. Tabela completa: `results/tables/m5_compara
 | naive semanal | 95,77 | 122,77 | 21,55 | 1,334 | 1,520 | 0,834 |
 | naive anual | 112,59 | 139,72 | 25,83 | 1,641 | 3,086 | 1,009 |
 | ARIMA por série | 85,71 | 111,00 | 19,18 | 1,202 | 1,283 | 0,755 |
-| PatchTST global | **69,44 ± 0,39** | **91,27 ± 0,51** | **16,12 ± 0,07** | **1,029 ± 0,004** | **1,008 ± 0,010** | **0,640 ± 0,002** |
-| MTST global | 71,75 ± 0,51 | 94,35 ± 0,34 | 16,22 ± 0,04 | 1,047 ± 0,006 | 1,058 ± 0,016 | 0,649 ± 0,003 |
+| PatchTST global | **69,44 ± 0,39** | **91,27 ± 0,51** | 16,12 ± 0,07 | **1,029 ± 0,004** | **1,008 ± 0,010** | **0,640 ± 0,002** |
+| MTST global | 70,74 ± 0,46 | 93,46 ± 0,57 | **16,05 ± 0,06** | 1,038 ± 0,006 | 1,059 ± 0,020 | 0,644 ± 0,004 |
 
-**Configuração escolhida** (menor MSE de validação normalizado na seleção, 20 configs):
+**Configuração escolhida** (menor MSE de validação normalizado, 30 configs):
 
 | modelo | config | val. MSE norm. | parâmetros | melhor época por seed (42/43/44) |
 |---|---|---|---|---|
 | PatchTST | patch 7, d_model 64, dropout 0,4 | 0,6496 | 370.394 | 7 / 9 / 9 |
-| MTST | patches (7,28,91), d_model 32, dropout 0,4 | 0,6656 | 1.106.956 | 2 / 3 / 4 |
+| MTST | patches (7,28,91), d_model 32, dropout 0,6 | 0,6635 | 1.106.956 | 7 / 4 / 5 |
+
+**MAE por janela de teste** (média das 3 seeds ± desvio; ARIMA determinístico). Origens: 29/05/2015, 27/08/2015, 25/11/2015, 23/02/2016.
+
+| modelo | janela 1 | janela 2 | janela 3 | janela 4 |
+|---|---|---|---|---|
+| ARIMA | 88,26 | 81,61 | 91,45 | 81,53 |
+| PatchTST | 72,71 ± 1,60 | **64,72 ± 0,42** | **75,97 ± 0,39** | **64,35 ± 0,41** |
+| MTST | **71,10 ± 0,82** | 65,60 ± 0,54 | 79,31 ± 0,26 | 66,93 ± 1,87 |
 
 **Testes de Wilcoxon pareados por série** (`src/testes.py`, `results/tables/m5_testes.csv`): 70 séries, MAE por
-série médio nas 4 janelas. Duas versões no CSV: **seed 42** e **média das seeds 42, 43 e 44** (para cada série, a
-média dos MAE das seeds; não é o MAE da média das previsões), esta última quando as previsões de todas as seeds
-existem. A tabela abaixo é da seed 42 (as previsões das seeds 43 e 44 ainda não foram salvas; entram na
-reexecução do `final.py`). p-valor bilateral; p (Holm) corrige para as 3 comparações de cada versão.
+série médio nas 4 janelas. Duas versões: **seed 42** e **média das seeds 42, 43 e 44** (para cada série, a média dos
+MAE das seeds; não é o MAE da média das previsões). p-valor bilateral; p (Holm) corrige para as 3 comparações de cada versão.
 
-| comparação (A x B) | W | p-valor | p (Holm) | séries vencidas por A / B | MAE médio A / B |
-|---|---|---|---|---|---|
-| PatchTST x MTST | 688 | 0,0012 | 0,0012 | 46 / 24 | 69,50 / 71,75 |
-| PatchTST x ARIMA | 131 | < 0,001 | < 0,001 | 66 / 4 | 69,50 / 85,71 |
-| MTST x ARIMA | 190 | < 0,001 | < 0,001 | 64 / 6 | 71,75 / 85,71 |
+| comparação (A x B) | versão | W | p-valor | p (Holm) | séries vencidas por A / B | MAE médio A / B |
+|---|---|---|---|---|---|---|
+| PatchTST x MTST | seed 42 | 1057 | 0,278 | 0,278 | 37 / 33 | 69,50 / 70,29 |
+| PatchTST x MTST | média 3 seeds | 1010 | 0,174 | 0,174 | 39 / 31 | 69,44 / 70,73 |
+| PatchTST x ARIMA | seed 42 | 131 | < 0,001 | < 0,001 | 66 / 4 | 69,50 / 85,71 |
+| PatchTST x ARIMA | média 3 seeds | 98 | < 0,001 | < 0,001 | 64 / 6 | 69,44 / 85,71 |
+| MTST x ARIMA | seed 42 | 172 | < 0,001 | < 0,001 | 66 / 4 | 70,29 / 85,71 |
+| MTST x ARIMA | média 3 seeds | 177 | < 0,001 | < 0,001 | 66 / 4 | 70,74 / 85,71 |
 
 **Leitura**
-- **O ganho do MTST sobre o PatchTST do artigo não se repete aqui:** o PatchTST fica melhor em todas as métricas
-  (MAE 69,4 vs 71,7; MASE 1,029 vs 1,047) e vence em 46 das 70 séries (Wilcoxon p = 0,0012). A diferença é
-  pequena (~3% no MAE), mas consistente: as 3 seeds do PatchTST (MAE 69,0 a 69,8) ficam todas abaixo das 3 do
-  MTST (71,2 a 72,3). Em sMAPE e MAE normalizado a diferença é mínima (16,12 vs 16,22; 0,640 vs 0,649).
-- **Os dois Transformers batem o ARIMA por folga:** MAE 16% a 19% menor (71,7 e 69,4 vs 85,7) e MASE ~1,03 a 1,05 vs 1,20;
+- **O ganho do MTST sobre o PatchTST do artigo não se repete aqui, mas a diferença é pequena:** o PatchTST fica
+  melhor em MAE (69,4 vs 70,7), RMSE, MASE (1,029 vs 1,038) e métricas normalizadas; o MTST fica melhor só no sMAPE
+  (16,05 vs 16,12) e na janela 1. Com o MTST em dropout 0,6, a diferença caiu de ~3% para ~1,9% no MAE e
+  **deixou de ser estatisticamente significativa** (Wilcoxon p = 0,28 na seed 42 e 0,17 na média das 3 seeds; 37 a
+  39 séries para o PatchTST contra 31 a 33 para o MTST). Antes da extensão (dropout 0,4) o MTST tinha MAE 71,75 e p = 0,0012: a
+  conclusão "PatchTST melhor" dependia da regularização. As 3 seeds do PatchTST (MAE 69,0 a 69,8) seguem abaixo das do MTST
+  (70,3 a 71,2), então a diferença nas médias é consistente, mas pequena e não distinguível por série. O MTST não supera o
+  PatchTST em nenhum cenário testado.
+- **Os dois Transformers batem o ARIMA por folga:** MAE 17% a 19% menor (70,7 e 69,4 vs 85,7) e MASE ~1,03 a 1,04 vs 1,20;
   vencem em 64 a 66 das 70 séries (p < 0,001). Mas o ARIMA é reajustado a cada janela e os Transformers são
   treinados uma vez (ver Desenho experimental), então a comparação não é simétrica em favor dos Transformers.
-- **MTST sobreajusta cedo:** a melhor época fica em 2 a 4 de 15 (PatchTST: 7 a 9), e a loss de validação do MTST
-  fica estável ou sobe enquanto a de treino cai (`results/figures/m5_curvas_treino.png`). O MTST tem 3 vezes
-  mais parâmetros que o PatchTST escolhido; é uma hipótese (não testada) que o excesso de capacidade, e não a
-  ideia multirresolução, explique a perda.
-- **Seleção ruidosa:** as 20 configs ficam numa faixa estreita de MSE de validação (0,650 a 0,697), com uma só
-  seed na seleção; a escolha de cada modelo é pouco robusta. Dropout 0,4 (borda da grade) foi o escolhido nos dois
-  modelos, e uma grade com mais regularização poderia mudar o ranking (não testado).
+- **MTST sobreajusta mais cedo:** com dropout 0,4 a melhor época ficava em 2 a 4 de 15; com 0,6 sobe para 4 a 7
+  (PatchTST: 7 a 9). Mais regularização ajudou o MTST (val. 0,6656 -> 0,6635; MAE no teste 71,75 -> 70,74), compatível
+  com a hipótese (não testada) de que o excesso de capacidade (3x os parâmetros do PatchTST), e não a ideia
+  multirresolução, explica a perda. Como 0,6 é a borda da grade, um dropout maior poderia fechar mais a diferença.
+- **Seleção ruidosa:** as 30 configs ficam numa faixa estreita de MSE de validação (0,650 a 0,697), com uma só seed
+  na seleção; a escolha é pouco robusta (no MTST, as 3 melhores configs diferem em menos de 0,003).
 - **Limites:** uma divisão temporal (4 janelas de 90 dias contíguas, de dependência forte entre si), 70 séries
   agregadas por loja x departamento e 3 seeds. Os testes de Wilcoxon tratam as séries como independentes, o que não
-  vale na prática (séries da mesma loja são correlacionadas); os p-valores são indicativos.
+  vale na prática (séries da mesma loja são correlacionadas); os p-valores são indicativos. A janela 3 (a mais difícil, inclui o fim de ano) é a que mais separa os modelos (PatchTST 76,0 vs MTST 79,3).
 
 Figuras: `results/figures/m5_previsoes_exemplo.png` (janela 1, 4 séries de escalas diferentes) e
 `m5_curvas_treino.png` (melhor config, seed 42).
@@ -241,10 +250,10 @@ results/         figures/ e tables/ (prefixo m5_ = M5); store_item/ = experiment
 - [x] PatchTST oficial vendorizado
 - [x] Seleção de parâmetros (`selecao.py`), treino final (`final.py`) e notebook Colab
 - [x] Seleção (20 configs) e treino final (3 seeds) rodados no Colab; `m5_comparacao.csv` e figuras
-- [x] Testes de Wilcoxon pareados por série (`testes.py`, seed 42)
+- [x] Testes de Wilcoxon pareados por série (`testes.py`)
 - [x] Extensão da grade (dropout 0,6), `final.py` salvando previsões de todas as seeds e `testes.py` com a média
   das 3 seeds: código e notebook prontos (smoke test em CPU OK)
-- [ ] Rodar a extensão no Colab (`selecao` -> `final` -> `testes`) e atualizar a tabela de resultados
+- [x] Extensão rodada no Colab (30 configs, 3 seeds com previsões salvas); resultados e testes atualizados (MTST escolheu dropout 0,6)
 - [ ] Redação do relatório
 
 ## Replicação (ETTh1)
