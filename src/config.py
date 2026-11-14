@@ -114,9 +114,10 @@ def config_modelo(modelo, patch, d_model, dropout):
     return dict(base, patch_len=patch, stride=patch)
 
 
+# MTST tem dropout 0,8 a mais: seu ótimo (0,6) estava na borda; o do PatchTST (0,4) é interior.
 # --- Grades da seleção de parâmetros (src/selecao.py): só treino e validação ---
 GRADE = dict(
-    mtst_global=dict(patch=[(7, 14, 28), (7, 28, 91)], d_model=[32, 64], dropout=[0.2, 0.4, 0.6]),
+    mtst_global=dict(patch=[(7, 14, 28), (7, 28, 91)], d_model=[32, 64], dropout=[0.2, 0.4, 0.6, 0.8]),
     patchtst_global=dict(patch=[7, 14, 28], d_model=[32, 64], dropout=[0.2, 0.4, 0.6]),
 )
 SEEDS_FINAL = (42, 43, 44)

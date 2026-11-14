@@ -112,10 +112,14 @@ em `src/config.py` (`GRADE`), patches sem sobreposição (stride = patch), `d_ff
 
 | Modelo | patches | d_model | dropout | configs |
 |---|---|---|---|---|
-| MTST | (7,14,28) ou (7,28,91) | 32, 64 | 0,2; 0,4; 0,6 | 12 |
+| MTST | (7,14,28) ou (7,28,91) | 32, 64 | 0,2; 0,4; 0,6; **0,8** | 16 |
 | PatchTST | 7, 14 ou 28 | 32, 64 | 0,2; 0,4; 0,6 | 18 |
 
+(34 configs no total.)
+
 **Extensão do dropout:** a grade original tinha dropout 0,2 e 0,4 (20 configs). Como o 0,4, na borda da grade, venceu nos dois modelos, acrescentamos o 0,6 (+10 configs, 30 no total), já rodadas no Colab. **Resultado da extensão:** o MTST passou a escolher dropout 0,6, que agora é a borda da grade (o ótimo pode estar além); o PatchTST manteve o dropout 0,4 (o 0,6 ficou em 2º, 0,6530 contra 0,6496).
+
+**Última extensão (só MTST):** acrescentamos dropout 0,8 à grade do MTST (+4 configs: 2 patches x 2 d_model), porque o ótimo dele (0,6) estava na borda. A grade do PatchTST não muda: o ótimo dele (0,4) já está no interior (0,2 e 0,6 o cercam), então estender não mudaria a escolha. Se o 0,8 vencer, `final.py` refaz o treino final do MTST com as 3 seeds; se não, nada é retreinado. O PatchTST não é retreinado em nenhum caso. Retomada: `selecao.py` pula as configs já em `m5_selecao.csv` e `final.py` pula as seeds já em `m5_final.csv` (com previsões salvas).
 
 - **Critério:** MSE de validação na escala normalizada (melhor época de cada config).
 - **Protocolo (igual para todos):** 15 épocas fixas, Adam com OneCycleLR (max_lr 5e-4, pct_start 0,3),
@@ -254,6 +258,7 @@ results/         figures/ e tables/ (prefixo m5_ = M5); store_item/ = experiment
 - [x] Extensão da grade (dropout 0,6), `final.py` salvando previsões de todas as seeds e `testes.py` com a média
   das 3 seeds: código e notebook prontos (smoke test em CPU OK)
 - [x] Extensão rodada no Colab (30 configs, 3 seeds com previsões salvas); resultados e testes atualizados (MTST escolheu dropout 0,6)
+- [x] Grade do MTST estendida com dropout 0,8 (código e notebook prontos; falta rodar no Colab)
 - [ ] Redação do relatório
 
 ## Replicação (ETTh1)
